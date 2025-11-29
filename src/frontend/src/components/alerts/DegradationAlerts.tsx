@@ -204,13 +204,40 @@ export const DegradationAlerts: React.FC<DegradationAlertsProps> = ({
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626', icon: '🔴' };
+        return { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626' };
       case 'warning':
-        return { bg: '#fffbeb', border: '#fcd34d', text: '#d97706', icon: '🟡' };
+        return { bg: '#fffbeb', border: '#fcd34d', text: '#d97706' };
       default:
-        return { bg: '#eff6ff', border: '#93c5fd', text: '#2563eb', icon: '🔵' };
+        return { bg: '#eff6ff', border: '#93c5fd', text: '#2563eb' };
     }
   };
+
+  const SeverityIcon: React.FC<{ severity: string }> = ({ severity }) => {
+    const color = getSeverityColor(severity).text;
+    return (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill={color}>
+        <circle cx="6" cy="6" r="6" />
+      </svg>
+    );
+  };
+
+  const AlertIcon: React.FC<{ critical: boolean }> = ({ critical }) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={critical ? '#dc2626' : '#d97706'} strokeWidth="2">
+      {critical ? (
+        <>
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </>
+      ) : (
+        <>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </>
+      )}
+    </svg>
+  );
 
   // Sortera efter severity (critical först)
   const sortedAlerts = [...alerts].sort((a, b) => {
@@ -241,7 +268,7 @@ export const DegradationAlerts: React.FC<DegradationAlertsProps> = ({
           gap: 'var(--spacing-xs)',
         }}
       >
-        <span style={{ fontSize: '1.2em' }}>{hasCritical ? '🚨' : '⚠️'}</span>
+        <AlertIcon critical={hasCritical} />
         Systemvarningar ({alerts.length})
       </h3>
       <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
@@ -266,7 +293,7 @@ export const DegradationAlerts: React.FC<DegradationAlertsProps> = ({
                   marginBottom: 'var(--spacing-xs)',
                 }}
               >
-                <span>{colors.icon}</span>
+                <SeverityIcon severity={alert.severity} />
                 <strong style={{ color: colors.text }}>{alert.component}</strong>
               </div>
               <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-primary)' }}>

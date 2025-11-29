@@ -9,14 +9,14 @@ type DocSection = 'overview' | 'sensors' | 'monitoring' | 'occupancy' | 'alerts'
 export const Documentation: React.FC = () => {
   const [activeSection, setActiveSection] = useState<DocSection>('overview');
 
-  const sections: { id: DocSection; title: string; icon: string }[] = [
-    { id: 'overview', title: 'Översikt', icon: '📋' },
-    { id: 'sensors', title: 'Sensorer', icon: '📡' },
-    { id: 'monitoring', title: 'Systemövervakning', icon: '💓' },
-    { id: 'occupancy', title: 'Närvarodetektion', icon: '👤' },
-    { id: 'alerts', title: 'Larm & Varningar', icon: '🚨' },
-    { id: 'api', title: 'API-referens', icon: '🔌' },
-    { id: 'deployment', title: 'Driftsättning', icon: '🚀' },
+  const sections: { id: DocSection; title: string }[] = [
+    { id: 'overview', title: 'Oversikt' },
+    { id: 'sensors', title: 'Sensorer' },
+    { id: 'monitoring', title: 'Systemovervakning' },
+    { id: 'occupancy', title: 'Narvarodetektion' },
+    { id: 'alerts', title: 'Larm & Varningar' },
+    { id: 'api', title: 'API-referens' },
+    { id: 'deployment', title: 'Driftsattning' },
   ];
 
   return (
@@ -58,13 +58,9 @@ export const Documentation: React.FC = () => {
                       cursor: 'pointer',
                       textAlign: 'left',
                       fontSize: 'var(--font-size-sm)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-sm)',
                       marginBottom: 'var(--spacing-xs)',
                     }}
                   >
-                    <span>{section.icon}</span>
                     {section.title}
                   </button>
                 </li>
@@ -361,9 +357,9 @@ const AlertsSection: React.FC = () => (
         Systemet övervakar kontinuerligt komponenternas hälsa och visar varningar vid problem:
       </p>
       <ul style={{ paddingLeft: 'var(--spacing-lg)' }}>
-        <li><strong>🔴 Kritisk:</strong> Sensor offline, databas nere</li>
-        <li><strong>🟡 Varning:</strong> Gammal data, collector stoppad</li>
-        <li><strong>🔵 Info:</strong> Mindre avvikelser</li>
+        <li><strong>Kritisk:</strong> Sensor offline, databas nere</li>
+        <li><strong>Varning:</strong> Gammal data, collector stoppad</li>
+        <li><strong>Info:</strong> Mindre avvikelser</li>
       </ul>
     </SubSection>
 

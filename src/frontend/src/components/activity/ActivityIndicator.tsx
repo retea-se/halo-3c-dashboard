@@ -1,8 +1,12 @@
 /**
  * ActivityIndicator - Visar rörelse/aktivitetsindikering baserat på ljudnivå
  *
- * Eftersom Halo 3C inte har dedikerad rörelsesensor (PIR) används ljudnivå
- * som proxy för att indikera aktivitet i rummet.
+ * Halo 3C har flera rörelsedetektorer:
+ * - PIR-sensor (pir/max) - passiv infraröd rörelsedetektor
+ * - Accelerometer (accsensor/move) - vibrationsdetektor
+ *
+ * Denna komponent använder ljudnivå som kompletterande indikator för aktivitet,
+ * vilket ger en mer nyanserad bild av rumsaktivitet än enbart binär rörelsedetektering.
  *
  * Ljudnivåer:
  * - < 40 dB: Tyst (ingen aktivitet)
@@ -28,6 +32,38 @@ interface ActivityIndicatorProps {
   compact?: boolean;
 }
 
+// SVG-ikoner för aktivitetsnivåer
+const ActivityIcons = {
+  none: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 10a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
+      <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2" />
+    </svg>
+  ),
+  low: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="12" r="8" opacity="0.3" />
+      <circle cx="12" cy="12" r="4" />
+    </svg>
+  ),
+  medium: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="12" r="10" opacity="0.3" />
+      <circle cx="12" cy="12" r="6" opacity="0.5" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  high: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="12" r="11" opacity="0.2" />
+      <circle cx="12" cy="12" r="8" opacity="0.4" />
+      <circle cx="12" cy="12" r="5" opacity="0.6" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+};
+
 const getActivityLevel = (soundDb: number): ActivityLevel => {
   if (soundDb < 40) {
     return {
@@ -35,16 +71,16 @@ const getActivityLevel = (soundDb: number): ActivityLevel => {
       soundLevel: soundDb,
       description: 'Ingen aktivitet',
       color: '#9ca3af',
-      icon: '😴',
+      icon: 'none',
     };
   }
   if (soundDb < 55) {
     return {
       level: 'low',
       soundLevel: soundDb,
-      description: 'Låg aktivitet',
+      description: 'Lag aktivitet',
       color: '#22c55e',
-      icon: '🟢',
+      icon: 'low',
     };
   }
   if (soundDb < 65) {
@@ -53,15 +89,15 @@ const getActivityLevel = (soundDb: number): ActivityLevel => {
       soundLevel: soundDb,
       description: 'Normal aktivitet',
       color: '#f59e0b',
-      icon: '🟡',
+      icon: 'medium',
     };
   }
   return {
     level: 'high',
     soundLevel: soundDb,
-    description: 'Hög aktivitet',
+    description: 'Hog aktivitet',
     color: '#ef4444',
-    icon: '🔴',
+    icon: 'high',
   };
 };
 
@@ -126,7 +162,9 @@ export const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
         }}
         title={`Aktivitet: ${activity.description} (${activity.soundLevel.toFixed(0)} dB)`}
       >
-        <span style={{ fontSize: '14px' }}>{activity.icon}</span>
+        <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center', color: activity.color }}>
+          {ActivityIcons[activity.icon as keyof typeof ActivityIcons]}
+        </span>
         <span
           style={{
             fontSize: 'var(--font-size-xs)',
@@ -154,11 +192,11 @@ export const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '24px',
             flexShrink: 0,
+            color: activity.color,
           }}
         >
-          {activity.icon}
+          {ActivityIcons[activity.icon as keyof typeof ActivityIcons]}
         </div>
 
         <div style={{ flex: 1 }}>
@@ -219,12 +257,11 @@ export const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
           <div
             style={{
               fontSize: 'var(--font-size-xs)',
-              color: 'var(--color-text-secondary)',
+              color: 'var(--color-text-tertiary)',
               marginTop: 'var(--spacing-sm)',
-              fontStyle: 'italic',
             }}
           >
-            Baserat på ljudnivå (ingen PIR-sensor)
+            Kompletterar PIR-sensor och accelerometer
           </div>
         </div>
       </div>

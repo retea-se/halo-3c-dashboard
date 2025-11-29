@@ -1,7 +1,7 @@
 /**
  * Navbar - Huvudnavigation for Tekniklokaler Dashboard
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { Icon } from '../ui/Icon';
@@ -29,6 +29,25 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const { colors } = useTheme();
   const { user, logout } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Close menu when navigating
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -39,35 +58,154 @@ export const Navbar: React.FC = () => {
       style={{
         backgroundColor: 'var(--color-surface-elevated)',
         borderBottom: `1px solid var(--color-border)`,
-        padding: 'var(--spacing-md) var(--spacing-lg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        padding: 'var(--spacing-sm) var(--spacing-md)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xl)' }}>
-        {/* Logo/Brand */}
-        <Link
-          to="/"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-sm)',
-            textDecoration: 'none',
-            color: 'var(--color-text-primary)',
-            fontWeight: 600,
-            fontSize: 'var(--font-size-lg)',
-          }}
-        >
-          <Icon name="halo-icon" size={24} color={colors.primary} />
-          <span>Tekniklokaler</span>
-        </Link>
-
-        {/* Navigation Links */}
+      {/* Main navbar row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+          {/* Mobile menu button */}
+          {isMobile && (
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 'var(--spacing-xs)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-text-primary)',
+              }}
+              aria-label="Toggle menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {isMobileMenuOpen ? (
+                  <path d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <>
+                    <path d="M3 12h18M3 6h18M3 18h18" />
+                  </>
+                )}
+              </svg>
+            </button>
+          )}
+
+          {/* Logo/Brand */}
+          <Link
+            to="/"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-sm)',
+              textDecoration: 'none',
+              color: 'var(--color-text-primary)',
+              fontWeight: 600,
+              fontSize: isMobile ? 'var(--font-size-base)' : 'var(--font-size-lg)',
+            }}
+          >
+            <Icon name="halo-icon" size={isMobile ? 20 : 24} color={colors.primary} />
+            <span>{isMobile ? 'TL' : 'Tekniklokaler'}</span>
+          </Link>
+
+          {/* Desktop Navigation Links */}
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--spacing-xs)',
+                      padding: 'var(--spacing-xs) var(--spacing-sm)',
+                      borderRadius: 'var(--radius-md)',
+                      textDecoration: 'none',
+                      color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      backgroundColor: isActive ? `${colors.primary}10` : 'transparent',
+                      fontWeight: isActive ? 600 : 400,
+                      fontSize: 'var(--font-size-sm)',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {item.icon && <Icon name={item.icon} size={16} color={isActive ? colors.primary : colors.text.secondary} />}
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right side: Heartbeat + Theme Toggle + User info + Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+          <HeartbeatIndicator compact refreshInterval={15000} />
+          <ThemeToggle />
+
+          {user && !isMobile && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-sm)',
+              paddingLeft: 'var(--spacing-sm)',
+              borderLeft: '1px solid var(--color-border)',
+            }}>
+              <span style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+              }}>
+                {user.username}
+              </span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: 'var(--spacing-xs) var(--spacing-sm)',
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--color-surface)';
+                  (e.target as HTMLButtonElement).style.color = 'var(--color-text-primary)';
+                }}
+                onMouseOut={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                  (e.target as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
+                }}
+              >
+                Logga ut
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile menu dropdown */}
+      {isMobile && isMobileMenuOpen && (
+        <div style={{
+          marginTop: 'var(--spacing-sm)',
+          paddingTop: 'var(--spacing-sm)',
+          borderTop: '1px solid var(--color-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--spacing-xs)',
+        }}>
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
             return (
@@ -77,70 +215,57 @@ export const Navbar: React.FC = () => {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 'var(--spacing-xs)',
-                  padding: 'var(--spacing-xs) var(--spacing-md)',
+                  gap: 'var(--spacing-sm)',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
                   borderRadius: 'var(--radius-md)',
                   textDecoration: 'none',
-                  color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                  color: isActive ? 'var(--color-primary)' : 'var(--color-text-primary)',
                   backgroundColor: isActive ? `${colors.primary}10` : 'transparent',
                   fontWeight: isActive ? 600 : 400,
                   fontSize: 'var(--font-size-base)',
-                  transition: 'all 0.2s ease',
                 }}
               >
-                {item.icon && <Icon name={item.icon} size={18} color={isActive ? colors.primary : colors.text.secondary} />}
+                {item.icon && <Icon name={item.icon} size={20} color={isActive ? colors.primary : colors.text.secondary} />}
                 <span>{item.label}</span>
               </Link>
             );
           })}
-        </div>
-      </div>
 
-      {/* Right side: Heartbeat + Theme Toggle + User info + Logout */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-        <HeartbeatIndicator compact refreshInterval={15000} />
-        <ThemeToggle />
-
-        {user && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-sm)',
-            paddingLeft: 'var(--spacing-md)',
-            borderLeft: '1px solid var(--color-border)',
-          }}>
-            <span style={{
-              fontSize: 'var(--font-size-sm)',
-              color: 'var(--color-text-secondary)',
+          {/* Mobile logout */}
+          {user && (
+            <div style={{
+              marginTop: 'var(--spacing-sm)',
+              paddingTop: 'var(--spacing-sm)',
+              borderTop: '1px solid var(--color-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 'var(--spacing-sm) var(--spacing-md)',
             }}>
-              {user.username}
-            </span>
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: 'var(--spacing-xs) var(--spacing-sm)',
+              <span style={{
                 fontSize: 'var(--font-size-sm)',
                 color: 'var(--color-text-secondary)',
-                backgroundColor: 'transparent',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseOver={(e) => {
-                (e.target as HTMLButtonElement).style.backgroundColor = 'var(--color-surface)';
-                (e.target as HTMLButtonElement).style.color = 'var(--color-text-primary)';
-              }}
-              onMouseOut={(e) => {
-                (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
-                (e.target as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
-              }}
-            >
-              Logga ut
-            </button>
-          </div>
-        )}
-      </div>
+              }}>
+                {user.username}
+              </span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: 'var(--spacing-xs) var(--spacing-md)',
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                }}
+              >
+                Logga ut
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 };

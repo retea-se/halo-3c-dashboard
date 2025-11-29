@@ -42,14 +42,15 @@ export const OccupancyCard: React.FC<OccupancyCardProps> = ({
   }, [loadStatus, refreshInterval]);
 
   const getStateColor = (state: string) => {
+    // Anpassade färger för mörkt tema med CSS-variabler som fallback
     switch (state) {
       case 'occupied':
-        return { bg: '#dcfce7', text: '#166534', border: '#86efac' };
+        return { bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.4)' };
       case 'vacant':
-        return { bg: '#f3f4f6', text: '#4b5563', border: '#d1d5db' };
+        return { bg: 'rgba(156, 163, 175, 0.15)', text: 'var(--color-text-secondary)', border: 'rgba(156, 163, 175, 0.3)' };
       case 'uncertain':
       default:
-        return { bg: '#fef3c7', text: '#92400e', border: '#fcd34d' };
+        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.4)' };
     }
   };
 
@@ -66,14 +67,32 @@ export const OccupancyCard: React.FC<OccupancyCardProps> = ({
   };
 
   const getStateIcon = (state: string) => {
+    // SVG-baserade ikoner istället för emojis
     switch (state) {
       case 'occupied':
-        return '👤';
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="7" r="4" />
+            <path d="M12 14c-6 0-8 3-8 5v2h16v-2c0-2-2-5-8-5z" />
+          </svg>
+        );
       case 'vacant':
-        return '🚪';
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="18" rx="1" />
+            <path d="M10 12h4" />
+            <path d="M10 12l2-2m-2 2l2 2" />
+          </svg>
+        );
       case 'uncertain':
       default:
-        return '❓';
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+            <circle cx="12" cy="17" r="1" fill="currentColor" />
+          </svg>
+        );
     }
   };
 
@@ -150,9 +169,16 @@ export const OccupancyCard: React.FC<OccupancyCardProps> = ({
           borderRadius: 'var(--radius-lg)',
           border: `2px solid ${stateColors.border}`,
         }}>
-          <span style={{ fontSize: '2rem' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: stateColors.text,
+          }}>
             {getStateIcon(status.state)}
-          </span>
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{
               fontSize: 'var(--font-size-xl)',

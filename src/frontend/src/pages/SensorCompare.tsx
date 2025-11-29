@@ -87,52 +87,84 @@ export const SensorCompare: React.FC = () => {
         // Hämta metadata för att få display names
         const metadata = await apiService.getSensorMetadata();
 
-        // Skapa lista med sensorer som faktiskt har data
-        const sensorsWithData = sensors
+        // Skapa en Map för att deduplicera baserat på sensor_id
+        // Prioritera FALLBACK_SENSORS eftersom de har bättre namn och enheter
+        const sensorMap = new Map<string, { id: string; name: string; unit: string; color: string }>();
+
+        // Först lägg till fallback-sensorer med deras id som nyckel
+        FALLBACK_SENSORS.forEach((sensor) => {
+          sensorMap.set(sensor.id, sensor);
+        });
+
+        // Filtera live-sensorer som har giltig data och INTE redan finns i fallback
+        const liveSensorIds = new Set(
+          sensors
+            .filter((s: any) => {
+              const value = Object.values(s.values || {})[0];
+              return value !== undefined && value !== null && typeof value === 'number' && value < 1000000000000;
+            })
+            .map((s: any) => s.sensor_id)
+        );
+
+        // Ta bara med fallback-sensorer som faktiskt har data
+        // Plus eventuella live-sensorer som inte finns i fallback
+        const activeSensors = new Map<string, { id: string; name: string; unit: string; color: string }>();
+
+        // Lägg till fallback-sensorer som har aktiv data
+        FALLBACK_SENSORS.forEach((sensor) => {
+          if (liveSensorIds.has(sensor.id)) {
+            activeSensors.set(sensor.id, sensor);
+          }
+        });
+
+        // Generera färg baserat på sensor-typ för nya sensorer
+        const getColor = (sensorId: string) => {
+          if (sensorId.includes('temp')) return '#ef4444';
+          if (sensorId.includes('humidity')) return '#3b82f6';
+          if (sensorId.includes('co2')) return '#f59e0b';
+          if (sensorId.includes('tvoc')) return '#8b5cf6';
+          if (sensorId.includes('pm')) return '#10b981';
+          if (sensorId.includes('gas')) return '#dc2626';
+          if (sensorId.includes('aud')) return '#ec4899';
+          if (sensorId.includes('lux')) return '#f97316';
+          if (sensorId.includes('AQI') || sensorId.includes('Health')) return '#6366f1';
+          if (sensorId.includes('pir') || sensorId.includes('acc')) return '#22c55e';
+          if (sensorId.includes('heartbeat')) return '#ef4444';
+          return '#6b7280';
+        };
+
+        // Lägg till live-sensorer som INTE finns i fallback
+        sensors
           .filter((s: any) => {
             const value = Object.values(s.values || {})[0];
             return value !== undefined && value !== null && typeof value === 'number' && value < 1000000000000;
           })
-          .map((s: any) => {
-            // Hitta metadata för denna sensor
-            const meta = metadata.find((m: any) => {
-              const techName = m.technical_name || '';
-              return techName === s.sensor_id || s.sensor_id.includes(techName.split('/')[0]);
-            });
+          .forEach((s: any) => {
+            if (!sensorMap.has(s.sensor_id)) {
+              // Hitta metadata för denna sensor
+              const meta = metadata.find((m: any) => {
+                const techName = m.technical_name || '';
+                return techName === s.sensor_id || s.sensor_id === techName;
+              });
 
-            // Generera färg baserat på sensor-typ
-            const getColor = (sensorId: string) => {
-              if (sensorId.includes('temp')) return '#ef4444';
-              if (sensorId.includes('humidity')) return '#3b82f6';
-              if (sensorId.includes('co2')) return '#f59e0b';
-              if (sensorId.includes('tvoc')) return '#8b5cf6';
-              if (sensorId.includes('pm')) return '#10b981';
-              if (sensorId.includes('gas')) return '#dc2626';
-              if (sensorId.includes('aud')) return '#ec4899';
-              if (sensorId.includes('lux')) return '#f97316';
-              if (sensorId.includes('AQI') || sensorId.includes('Health')) return '#6366f1';
-              if (sensorId.includes('pir') || sensorId.includes('acc')) return '#22c55e';
-              if (sensorId.includes('heartbeat')) return '#ef4444';
-              return '#6b7280';
-            };
+              const displayName = meta?.display_name || s.sensor_id;
+              const unit = meta?.unit || '';
 
-            return {
-              id: s.sensor_id,
-              name: meta?.display_name || s.sensor_id,
-              unit: meta?.unit || '',
-              color: getColor(s.sensor_id),
-            };
+              activeSensors.set(s.sensor_id, {
+                id: s.sensor_id,
+                name: displayName,
+                unit: unit,
+                color: getColor(s.sensor_id),
+              });
+            }
           });
 
-        // Kombinera med fallback för sensorer som kanske inte har data just nu
-        const allSensors = [...sensorsWithData];
-        FALLBACK_SENSORS.forEach((fallback) => {
-          if (!allSensors.find((s) => s.id === fallback.id)) {
-            allSensors.push(fallback);
-          }
-        });
+        // Konvertera Map till array och sortera alfabetiskt
+        const uniqueSensors = Array.from(activeSensors.values()).sort((a, b) =>
+          a.name.localeCompare(b.name, 'sv')
+        );
 
-        setAvailableSensors(allSensors);
+        setAvailableSensors(uniqueSensors.length > 0 ? uniqueSensors : FALLBACK_SENSORS);
       } catch (error) {
         console.error('Failed to load available sensors:', error);
         // Använd fallback om API misslyckas
@@ -245,14 +277,14 @@ export const SensorCompare: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 'var(--spacing-lg)', maxWidth: '1600px', margin: '0 auto' }}>
-      <h1 style={{ marginBottom: 'var(--spacing-xl)' }}>Jämför sensorer</h1>
+    <div style={{ padding: 'var(--spacing-md)', maxWidth: '1600px', margin: '0 auto' }}>
+      <h1 style={{ marginBottom: 'var(--spacing-md)', fontSize: 'var(--font-size-xl)' }}>Grafer</h1>
 
       {/* Kontroller */}
-      <Card padding="md" style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-lg)', alignItems: 'flex-start' }}>
+      <Card padding="md" style={{ marginBottom: 'var(--spacing-md)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
           {/* Sensorval */}
-          <div style={{ flex: '1 1 400px' }}>
+          <div>
             <h3
               style={{
                 fontSize: 'var(--font-size-sm)',
@@ -261,15 +293,15 @@ export const SensorCompare: React.FC = () => {
                 color: 'var(--color-text-secondary)',
               }}
             >
-              Välj sensorer att jämföra
+              Sensorer
             </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {availableSensors.map((sensor) => (
                 <button
                   key={sensor.id}
                   onClick={() => toggleSensor(sensor.id)}
                   style={{
-                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                    padding: '4px 8px',
                     border: `2px solid ${selectedSensors.includes(sensor.id) ? sensor.color : 'var(--color-border)'}`,
                     borderRadius: 'var(--radius-md)',
                     backgroundColor: selectedSensors.includes(sensor.id)
@@ -277,9 +309,10 @@ export const SensorCompare: React.FC = () => {
                       : 'transparent',
                     color: selectedSensors.includes(sensor.id) ? sensor.color : 'var(--color-text-secondary)',
                     cursor: 'pointer',
-                    fontSize: 'var(--font-size-sm)',
+                    fontSize: 'var(--font-size-xs)',
                     fontWeight: selectedSensors.includes(sensor.id) ? 600 : 400,
                     transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {sensor.name}
@@ -288,103 +321,104 @@ export const SensorCompare: React.FC = () => {
             </div>
           </div>
 
-          {/* Tidsintervall */}
-          <div>
-            <h3
-              style={{
-                fontSize: 'var(--font-size-sm)',
-                fontWeight: 600,
-                marginBottom: 'var(--spacing-sm)',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              Tidsperiod
-            </h3>
-            <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
-              {TIME_RANGES.map((range) => (
-                <button
-                  key={range.hours}
-                  onClick={() => setTimeRange(range.hours)}
-                  style={{
-                    padding: 'var(--spacing-xs) var(--spacing-sm)',
-                    border: `1px solid ${timeRange === range.hours ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    borderRadius: 'var(--radius-md)',
-                    backgroundColor: timeRange === range.hours ? 'var(--color-primary)' : 'transparent',
-                    color: timeRange === range.hours ? 'white' : 'var(--color-text-secondary)',
-                    cursor: 'pointer',
-                    fontSize: 'var(--font-size-sm)',
-                  }}
-                >
-                  {range.label}
-                </button>
-              ))}
+          {/* Tidsintervall och normalisering i rad */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)', alignItems: 'flex-start' }}>
+            {/* Tidsintervall */}
+            <div style={{ flex: '1 1 auto' }}>
+              <h3
+                style={{
+                  fontSize: 'var(--font-size-sm)',
+                  fontWeight: 600,
+                  marginBottom: 'var(--spacing-sm)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                Tidsperiod
+              </h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {TIME_RANGES.map((range) => (
+                  <button
+                    key={range.hours}
+                    onClick={() => setTimeRange(range.hours)}
+                    style={{
+                      padding: '4px 8px',
+                      border: `1px solid ${timeRange === range.hours ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: timeRange === range.hours ? 'var(--color-primary)' : 'transparent',
+                      color: timeRange === range.hours ? 'white' : 'var(--color-text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: 'var(--font-size-xs)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Normalisering */}
-          <div>
-            <h3
-              style={{
-                fontSize: 'var(--font-size-sm)',
-                fontWeight: 600,
-                marginBottom: 'var(--spacing-sm)',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              Visning
-            </h3>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-xs)',
-                cursor: 'pointer',
-                fontSize: 'var(--font-size-sm)',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={normalizeData}
-                onChange={(e) => setNormalizeData(e.target.checked)}
-                style={{ cursor: 'pointer' }}
-              />
-              Normalisera (0-100%)
-            </label>
-            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-              Gör det lättare att jämföra sensorer med olika skalor
-            </p>
+            {/* Normalisering */}
+            <div style={{ flex: '0 0 auto' }}>
+              <h3
+                style={{
+                  fontSize: 'var(--font-size-sm)',
+                  fontWeight: 600,
+                  marginBottom: 'var(--spacing-sm)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                Visning
+              </h3>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-xs)',
+                  cursor: 'pointer',
+                  fontSize: 'var(--font-size-sm)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={normalizeData}
+                  onChange={(e) => setNormalizeData(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                Normalisera (0-100%)
+              </label>
+            </div>
           </div>
         </div>
       </Card>
 
       {/* Graf */}
-      <Card padding="lg">
+      <Card padding="sm">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 'var(--spacing-2xl)' }}>
+          <div style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>
             Laddar sensordata...
           </div>
         ) : selectedSensors.length === 0 ? (
           <div
             style={{
               textAlign: 'center',
-              padding: 'var(--spacing-2xl)',
+              padding: 'var(--spacing-xl)',
               color: 'var(--color-text-secondary)',
             }}
           >
-            Välj minst en sensor för att visa graf
+            Valj minst en sensor
           </div>
         ) : chartData.length === 0 ? (
           <div
             style={{
               textAlign: 'center',
-              padding: 'var(--spacing-2xl)',
+              padding: 'var(--spacing-xl)',
               color: 'var(--color-text-secondary)',
             }}
           >
-            Ingen data tillgänglig för vald tidsperiod
+            Ingen data for vald tidsperiod
           </div>
         ) : (
-          <div style={{ width: '100%', height: '500px' }}>
+          <div style={{ width: '100%', height: 'min(500px, 60vh)' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 30, bottom: 5, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />

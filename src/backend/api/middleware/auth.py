@@ -1,7 +1,7 @@
 """
 Authentication Middleware - JWT token validation
 """
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 from jose import JWTError, jwt
@@ -10,7 +10,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-security = HTTPBearer()
+# Auto_error=False gör att dependency inte kastar 403 automatiskt om header saknas
+security = HTTPBearer(auto_error=False)
 
 # JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -18,8 +19,6 @@ ALGORITHM = "HS256"
 
 # Validera att JWT_SECRET_KEY är satt i produktion
 if not SECRET_KEY:
-    import logging
-    logger = logging.getLogger(__name__)
     # Generera en temporär nyckel för utveckling, men varna
     import secrets
     SECRET_KEY = secrets.token_urlsafe(32)
@@ -72,7 +71,7 @@ def verify_token(token: str) -> Optional[dict]:
         return None
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = security):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
     """
     Dependency för att hämta aktuell användare från JWT token
 
@@ -83,8 +82,15 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = security)
         User data från token
 
     Raises:
-        HTTPException: Om token är ogiltig
+        HTTPException: Om token är ogiltig eller saknas
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = credentials.credentials
     payload = verify_token(token)
 
@@ -104,4 +110,3 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = security)
         )
 
     return {"username": username, "payload": payload}
-
