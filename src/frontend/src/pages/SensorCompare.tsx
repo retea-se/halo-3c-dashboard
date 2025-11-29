@@ -84,19 +84,7 @@ export const SensorCompare: React.FC = () => {
         const response = await apiService.getLatestSensors();
         const sensors = response.sensors || [];
 
-        // Hämta metadata för att få display names
-        const metadata = await apiService.getSensorMetadata();
-
-        // Skapa en Map för att deduplicera baserat på sensor_id
-        // Prioritera FALLBACK_SENSORS eftersom de har bättre namn och enheter
-        const sensorMap = new Map<string, { id: string; name: string; unit: string; color: string }>();
-
-        // Först lägg till fallback-sensorer med deras id som nyckel
-        FALLBACK_SENSORS.forEach((sensor) => {
-          sensorMap.set(sensor.id, sensor);
-        });
-
-        // Filtera live-sensorer som har giltig data och INTE redan finns i fallback
+        // Filtrera live-sensorer som har giltig data
         const liveSensorIds = new Set(
           sensors
             .filter((s: any) => {
