@@ -1,0 +1,562 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-01-27",
+  "sensors": [
+    {
+      "id": "htsensor_ctemp",
+      "technical_name": "htsensor/ctemp",
+      "display_name": "Temperatur",
+      "short_description": "Mäter omgivningstemperaturen i Celsius.",
+      "long_description": "Temperaturvärden anges i grader Celsius (°C) och visar aktuell temperatur i rummet där Halo 3C är placerad. Normal inomhustemperatur är 18-24°C för optimal komfort.",
+      "category": "Miljö",
+      "unit": "°C",
+      "data_type": "number",
+      "icon": "temperature-icon.svg",
+      "normal_range": {
+        "min": 18,
+        "max": 24,
+        "description": "Normal inomhustemperatur för komfort är 18-24°C. Värden utanför detta intervall kan påverka komfort och energiförbrukning."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 24,
+          "max": 28,
+          "message": "Temperatur över 24°C: Varmt, kan påverka komfort."
+        },
+        {
+          "level": "WARNING",
+          "min": 16,
+          "max": 18,
+          "message": "Temperatur under 18°C: Kallt, kan påverka komfort."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 28,
+          "message": "Temperatur över 28°C: Mycket varmt, överväg kylning."
+        },
+        {
+          "level": "CRITICAL",
+          "max": 16,
+          "message": "Temperatur under 16°C: Mycket kallt, risk för fuktskador."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 16, "label": "Mycket kallt", "color": "blue"},
+        {"min": 16, "max": 18, "label": "Kallt", "color": "lightblue"},
+        {"min": 18, "max": 24, "label": "Normal", "color": "green"},
+        {"min": 24, "max": 28, "label": "Varmt", "color": "yellow"},
+        {"min": 28, "label": "Mycket varmt", "color": "red"}
+      ],
+      "related_events": ["Temp_C", "Temp_C_Low"],
+      "faq": [
+        {
+          "question": "Vad är normal inomhustemperatur?",
+          "answer": "Normal inomhustemperatur för komfort är 18-24°C. Detta intervall ger optimal komfort för de flesta människor."
+        },
+        {
+          "question": "Varför kan höga temperaturer vara ett problem?",
+          "answer": "Temperaturer över 24°C kan påverka komfort och produktivitet. Över 28°C kan det även påverka hälsan negativt."
+        }
+      ]
+    },
+    {
+      "id": "htsensor_humidity",
+      "technical_name": "htsensor/humidity",
+      "display_name": "Luftfuktighet",
+      "short_description": "Mäter relativ luftfuktighet i procent.",
+      "long_description": "Relativ luftfuktighet mäts i procent (%) och visar mängden vattenånga i luften relativt maximal mängd vid aktuell temperatur. Optimal inomhusluftfuktighet är 30-60%.",
+      "category": "Miljö",
+      "unit": "%",
+      "data_type": "number",
+      "icon": "humidity-icon.svg",
+      "normal_range": {
+        "min": 30,
+        "max": 60,
+        "description": "Optimal inomhusluftfuktighet är 30-60%. Detta minimerar risken för fuktskador, mögel och besvär med luftvägar."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 60,
+          "max": 70,
+          "message": "Luftfuktighet över 60%: Hög fuktighet, risk för fuktskador och mögel."
+        },
+        {
+          "level": "WARNING",
+          "min": 20,
+          "max": 30,
+          "message": "Luftfuktighet under 30%: Låg fuktighet, kan orsaka torrluft och besvär."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 70,
+          "message": "Luftfuktighet över 70%: Mycket hög fuktighet, hög risk för fuktskador och mögel."
+        },
+        {
+          "level": "CRITICAL",
+          "max": 20,
+          "message": "Luftfuktighet under 20%: Mycket torr luft, risk för luftvägsbesvär."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 20, "label": "Mycket torrt", "color": "orange"},
+        {"min": 20, "max": 30, "label": "Torrt", "color": "yellow"},
+        {"min": 30, "max": 60, "label": "Optimalt", "color": "green"},
+        {"min": 60, "max": 70, "label": "Högt", "color": "yellow"},
+        {"min": 70, "label": "Mycket högt", "color": "red"}
+      ],
+      "related_events": ["Humidity", "Humidity_Low"],
+      "faq": [
+        {
+          "question": "Vad är optimal luftfuktighet?",
+          "answer": "Optimal inomhusluftfuktighet är 30-60%. Detta ger bäst komfort och minimerar risken för fuktskador och luftvägsbesvär."
+        },
+        {
+          "question": "Vad händer om luftfuktigheten är för hög?",
+          "answer": "Hög luftfuktighet (över 60%) kan leda till fuktskador, mögelbildning och allergier. Över 70% är kritiskt."
+        }
+      ]
+    },
+    {
+      "id": "co2sensor_co2",
+      "technical_name": "co2sensor/co2",
+      "display_name": "Koldioxid (CO₂)",
+      "short_description": "Mäter koldioxidhalten i luften.",
+      "long_description": "Koldioxidnivåer mäts i parts per million (ppm) och indikerar ventilationskvalitet. Höga värden (>1000 ppm) kan orsaka trötthet och nedsatt koncentrationsförmåga. Utomhus är CO₂-nivåer cirka 400 ppm.",
+      "category": "Luftkvalitet",
+      "unit": "ppm",
+      "data_type": "number",
+      "icon": "co2-icon.svg",
+      "normal_range": {
+        "min": 400,
+        "max": 1000,
+        "description": "Utomhusnivåer är cirka 400 ppm. Inomhus bör nivåer hållas under 1000 ppm för optimal komfort och koncentration."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 1000,
+          "max": 2000,
+          "message": "Över 1000 ppm: Sämre luftkvalitet. Överväg ventilation."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 2000,
+          "message": "Över 2000 ppm: Mycket hög nivå. Ventilera omedelbart."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 800, "label": "God luft", "color": "green"},
+        {"min": 800, "max": 1500, "label": "Måttlig luftkvalitet", "color": "yellow"},
+        {"min": 1500, "max": 2000, "label": "Behöver ventileras", "color": "orange"},
+        {"min": 2000, "label": "Kritisk nivå", "color": "red"}
+      ],
+      "related_events": ["CO2cal"],
+      "faq": [
+        {
+          "question": "Vad betyder CO₂-värdena?",
+          "answer": "CO₂-nivåer mäter andelen koldioxid i luften. Höga nivåer indikerar otillräcklig ventilation och kan påverka hälsa och koncentration."
+        },
+        {
+          "question": "Vad är normalt?",
+          "answer": "Utomhus är CO₂-nivåer cirka 400 ppm. Inomhus rekommenderas värden under 1000 ppm för bra luftkvalitet. Över 2000 ppm anses som dåligt."
+        },
+        {
+          "question": "Hur påverkar CO₂ min koncentration?",
+          "answer": "Höga CO₂-nivåer (över 1000 ppm) kan orsaka trötthet, nedsatt koncentrationsförmåga och huvudvärk. Det är viktigt att hålla nivåerna låga för optimal produktivitet."
+        }
+      ]
+    },
+    {
+      "id": "co2sensor_tvoc",
+      "technical_name": "co2sensor/tvoc",
+      "display_name": "TVOC (Total VOC)",
+      "short_description": "Mäter totala flyktiga organiska föreningar i luften.",
+      "long_description": "TVOC (Total Volatile Organic Compounds) mäts i parts per billion (ppb) och indikerar närvaro av kemiska ämnen i luften. Höga nivåer kan påverka hälsan och kan komma från byggmaterial, rengöringsmedel, eller andra källor.",
+      "category": "Luftkvalitet",
+      "unit": "ppb",
+      "data_type": "number",
+      "icon": "tvoc-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 500,
+        "description": "TVOC-nivåer under 500 ppb anses vara acceptabla för inomhusmiljöer. Lägre är bättre."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 500,
+          "max": 1000,
+          "message": "TVOC över 500 ppb: Måttligt höga nivåer, överväg ventilation."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 1000,
+          "message": "TVOC över 1000 ppb: Mycket höga nivåer, kan påverka hälsan. Ventilera omedelbart."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 250, "label": "Lågt", "color": "green"},
+        {"min": 250, "max": 500, "label": "Acceptabelt", "color": "yellow"},
+        {"min": 500, "max": 1000, "label": "Högt", "color": "orange"},
+        {"min": 1000, "label": "Mycket högt", "color": "red"}
+      ],
+      "related_events": ["TVOC"],
+      "faq": [
+        {
+          "question": "Vad är TVOC?",
+          "answer": "TVOC står för Total Volatile Organic Compounds och mäter flyktiga organiska föreningar i luften. Dessa kan komma från byggmaterial, rengöringsmedel, eller andra källor."
+        },
+        {
+          "question": "Hur påverkar TVOC hälsan?",
+          "answer": "Höga TVOC-nivåer kan orsaka huvudvärk, irritation i ögon och luftvägar, och andra hälsoproblem. Det är viktigt att hålla nivåerna låga."
+        }
+      ]
+    },
+    {
+      "id": "AQI_value",
+      "technical_name": "AQI/value",
+      "display_name": "Air Quality Index (AQI)",
+      "short_description": "Övergripande luftkvalitetsindex baserat på flera sensorer.",
+      "long_description": "AQI (Air Quality Index) är ett sammanfattat index (0-500) som kombinerar flera luftkvalitetsmätningar för att ge en övergripande bild av luftkvaliteten. Högre värden indikerar sämre luftkvalitet.",
+      "category": "Luftkvalitet",
+      "unit": "Index",
+      "data_type": "number",
+      "icon": "aqi-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 50,
+        "description": "AQI 0-50 är 'Bra' och anses vara hälsosamt för alla."
+      },
+      "warning_thresholds": [
+        {
+          "level": "INFO",
+          "min": 51,
+          "max": 100,
+          "message": "AQI 51-100: Måttlig luftkvalitet. Acceptabelt för de flesta."
+        },
+        {
+          "level": "WARNING",
+          "min": 101,
+          "max": 150,
+          "message": "AQI 101-150: Ohälsosamt för känsliga grupper."
+        },
+        {
+          "level": "WARNING",
+          "min": 151,
+          "max": 200,
+          "message": "AQI 151-200: Ohälsosamt. Alla kan uppleva besvär."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 201,
+          "max": 300,
+          "message": "AQI 201-300: Mycket ohälsosamt. Allvarlig hälsoeffekt."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 301,
+          "message": "AQI 301-500: Farligt. Akut hälsoeffekt."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 50, "label": "Bra", "color": "green"},
+        {"min": 51, "max": 100, "label": "Måttlig", "color": "yellow"},
+        {"min": 101, "max": 150, "label": "Ohälsosamt för känsliga", "color": "orange"},
+        {"min": 151, "max": 200, "label": "Ohälsosamt", "color": "red"},
+        {"min": 201, "max": 300, "label": "Mycket ohälsosamt", "color": "darkred"},
+        {"min": 301, "label": "Farligt", "color": "purple"}
+      ],
+      "related_events": ["AQI"],
+      "faq": [
+        {
+          "question": "Vad betyder AQI-värden?",
+          "answer": "AQI (Air Quality Index) är ett sammanfattat index från 0-500. 0-50 är 'Bra', 51-100 är 'Måttlig', 101-150 är 'Ohälsosamt för känsliga', 151-200 är 'Ohälsosamt', 201-300 är 'Mycket ohälsosamt', och 301-500 är 'Farligt'."
+        },
+        {
+          "question": "Vad är normalt luftkvalitetsindex?",
+          "answer": "Normalt inomhus AQI är 0-50 (Bra). Värden över 100 bör uppmärksammas och kan kräva åtgärder som ventilation eller luftrening."
+        }
+      ]
+    },
+    {
+      "id": "pmsensor_raw_1",
+      "technical_name": "pmsensor/raw/1",
+      "display_name": "PM2.5 Partiklar",
+      "short_description": "Mäter fina partiklar (PM2.5) i luften.",
+      "long_description": "PM2.5 (Particulate Matter 2.5) mäter partiklar mindre än 2.5 mikrometer i diameter. Dessa små partiklar kan tränga djupt in i lungorna och påverka hälsan. Mätningen görs i mikrogram per kubikmeter (µg/m³).",
+      "category": "Luftkvalitet",
+      "unit": "µg/m³",
+      "data_type": "number",
+      "icon": "pm25-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 12,
+        "description": "PM2.5-nivåer under 12 µg/m³ anses vara bra för inomhusmiljöer."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 12,
+          "max": 35,
+          "message": "PM2.5 över 12 µg/m³: Måttligt höga nivåer."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 35,
+          "message": "PM2.5 över 35 µg/m³: Mycket höga nivåer, kan påverka hälsan."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 12, "label": "Bra", "color": "green"},
+        {"min": 12, "max": 35, "label": "Måttligt", "color": "yellow"},
+        {"min": 35, "max": 55, "label": "Högt", "color": "orange"},
+        {"min": 55, "label": "Mycket högt", "color": "red"}
+      ],
+      "related_events": ["PM2.5"],
+      "faq": [
+        {
+          "question": "Vad är PM2.5?",
+          "answer": "PM2.5 står för partiklar mindre än 2.5 mikrometer i diameter. Dessa små partiklar kan tränga djupt in i lungorna och påverka hälsan."
+        },
+        {
+          "question": "Var kommer PM2.5 ifrån?",
+          "answer": "PM2.5 kan komma från olika källor som rökning, trafik, industrier, eller inomhuskällor som köksrök eller damm."
+        }
+      ]
+    },
+    {
+      "id": "pmsensor_raw_2",
+      "technical_name": "pmsensor/raw/2",
+      "display_name": "PM10 Partiklar",
+      "short_description": "Mäter större partiklar (PM10) i luften.",
+      "long_description": "PM10 (Particulate Matter 10) mäter partiklar mindre än 10 mikrometer i diameter. Dessa partiklar kan tränga in i luftvägar och påverka hälsan. Mätningen görs i mikrogram per kubikmeter (µg/m³).",
+      "category": "Luftkvalitet",
+      "unit": "µg/m³",
+      "data_type": "number",
+      "icon": "pm10-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 20,
+        "description": "PM10-nivåer under 20 µg/m³ anses vara bra för inomhusmiljöer."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 20,
+          "max": 50,
+          "message": "PM10 över 20 µg/m³: Måttligt höga nivåer."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 50,
+          "message": "PM10 över 50 µg/m³: Mycket höga nivåer, kan påverka hälsan."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 20, "label": "Bra", "color": "green"},
+        {"min": 20, "max": 50, "label": "Måttligt", "color": "yellow"},
+        {"min": 50, "max": 100, "label": "Högt", "color": "orange"},
+        {"min": 100, "label": "Mycket högt", "color": "red"}
+      ],
+      "related_events": ["PM10"],
+      "faq": [
+        {
+          "question": "Vad är skillnaden mellan PM2.5 och PM10?",
+          "answer": "PM2.5 är mindre partiklar (under 2.5 µm) som kan tränga djupt in i lungorna, medan PM10 är större partiklar (under 10 µm) som ofta fastnar i övre luftvägar."
+        }
+      ]
+    },
+    {
+      "id": "audsensor_sum",
+      "technical_name": "audsensor/sum",
+      "display_name": "Ljudnivå",
+      "short_description": "Mäter ljudnivån i decibel.",
+      "long_description": "Ljudnivån mäts i decibel (dB) och visar den totala ljudnivån i rummet. Höga ljudnivåer kan påverka komfort och hälsa, och kan också trigga events som Aggression eller NOISE.",
+      "category": "Ljud",
+      "unit": "dB",
+      "data_type": "number",
+      "icon": "sound-icon.svg",
+      "normal_range": {
+        "min": 30,
+        "max": 60,
+        "description": "Normal samtalsnivå är cirka 60 dB. Kontorsmiljöer bör hålla sig under 65 dB för optimal komfort."
+      },
+      "warning_thresholds": [
+        {
+          "level": "INFO",
+          "min": 60,
+          "max": 70,
+          "message": "Ljudnivå 60-70 dB: Högre ljud, kan påverka koncentration."
+        },
+        {
+          "level": "WARNING",
+          "min": 70,
+          "max": 85,
+          "message": "Ljudnivå 70-85 dB: Högt ljud, kan orsaka störningar."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 85,
+          "message": "Ljudnivå över 85 dB: Mycket högt ljud, kan skada hörseln vid långvarig exponering."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 30, "label": "Tyst", "color": "blue"},
+        {"min": 30, "max": 60, "label": "Normal", "color": "green"},
+        {"min": 60, "max": 70, "label": "Högt", "color": "yellow"},
+        {"min": 70, "max": 85, "label": "Mycket högt", "color": "orange"},
+        {"min": 85, "label": "Farligt", "color": "red"}
+      ],
+      "related_events": ["Sound", "Aggression", "NOISE"],
+      "faq": [
+        {
+          "question": "Vad betyder ljudnivåerna?",
+          "answer": "Ljudnivåer mäts i decibel (dB). Normal samtalsnivå är cirka 60 dB. Ljud över 70 dB kan påverka koncentration, och över 85 dB kan skada hörseln vid långvarig exponering."
+        },
+        {
+          "question": "Varför kan ljud trigga events?",
+          "answer": "Höga ljudnivåer kan indikera problem som aggression, olyckor, eller andra säkerhetshändelser. Sensorn kan konfigureras att trigga events vid specifika ljudnivåer."
+        }
+      ]
+    },
+    {
+      "id": "HealthIndex_val",
+      "technical_name": "HealthIndex/val",
+      "display_name": "Hälsoindex",
+      "short_description": "Övergripande hälsoindex baserat på flera sensorer.",
+      "long_description": "Hälsoindex är ett sammanfattat index (0-5) som kombinerar flera luftkvalitetsmätningar för att ge en snabb översikt av inomhusmiljöns hälsa. 0 är utmärkt, 5 är mycket dåligt.",
+      "category": "Hälsoindex",
+      "unit": "Index",
+      "data_type": "number",
+      "icon": "health-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 2,
+        "description": "Hälsoindex 0-2 anses vara bra (Utmärkt till Bra)."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 3,
+          "max": 4,
+          "message": "Hälsoindex 3-4: Måttlig till dålig luftkvalitet."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 5,
+          "message": "Hälsoindex 5: Mycket dålig luftkvalitet, omedelbar åtgärd krävs."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "min_inclusive": true, "max": 0, "max_inclusive": true, "label": "Utmärkt", "color": "green"},
+        {"min": 1, "min_inclusive": true, "max": 1, "max_inclusive": true, "label": "Mycket bra", "color": "lightgreen"},
+        {"min": 2, "min_inclusive": true, "max": 2, "max_inclusive": true, "label": "Bra", "color": "yellow"},
+        {"min": 3, "min_inclusive": true, "max": 3, "max_inclusive": true, "label": "Måttlig", "color": "orange"},
+        {"min": 4, "min_inclusive": true, "max": 4, "max_inclusive": true, "label": "Dålig", "color": "red"},
+        {"min": 5, "min_inclusive": true, "max": 5, "max_inclusive": true, "label": "Mycket dålig", "color": "darkred"}
+      ],
+      "related_events": ["Health_Index"],
+      "faq": [
+        {
+          "question": "Vad betyder hälsoindex?",
+          "answer": "Hälsoindex är ett sammanfattat index från 0-5 som visar inomhusmiljöns övergripande hälsa. 0 = Utmärkt, 1 = Mycket bra, 2 = Bra, 3 = Måttlig, 4 = Dålig, 5 = Mycket dålig."
+        },
+        {
+          "question": "Hur tolkar jag hälsoindex?",
+          "answer": "Hälsoindex kombinerar flera luftkvalitetsmätningar. Värdet 0-2 är bra, 3-4 är måttlig till dålig, och 5 är mycket dålig och kräver omedelbar åtgärd."
+        }
+      ]
+    },
+    {
+      "id": "blebcn_alert_status",
+      "technical_name": "blebcn/alert/status",
+      "display_name": "BLE Beacon",
+      "short_description": "Mäter närhet och panikknapp-status för BLE-beacons.",
+      "long_description": "BLE Beacon-sensorn detekterar närhet till Bluetooth Low Energy-beacons och kan användas för panikknapp-funktionalitet, närhetsdetektering och indoor positioning. Signalstyrka (RSSI) indikerar avståndet till beacon.",
+      "category": "Rörelse",
+      "unit": "Status",
+      "data_type": "object",
+      "icon": "beacon-icon.svg",
+      "normal_range": {
+        "description": "RSSI > -80 dBm indikerar närhet. Panikknapp-status 0 = inaktiv, 1 = aktiverad."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "message": "Batteri under 20%: Lågt batteri på beacon.",
+          "condition": "battery < 20"
+        },
+        {
+          "level": "CRITICAL",
+          "message": "Batteri under 10%: Mycket lågt batteri på beacon.",
+          "condition": "battery < 10"
+        },
+        {
+          "level": "CRITICAL",
+          "message": "Panikknapp aktiverad: Omedelbar åtgärd krävs.",
+          "condition": "status == 1"
+        }
+      ],
+      "graph_levels": [
+        {"rssi_min": -60, "rssi_max": 0, "label": "Mycket nära", "color": "green"},
+        {"rssi_min": -80, "rssi_max": -60, "label": "Nära", "color": "yellow"},
+        {"rssi_min": -90, "rssi_max": -80, "label": "Långt bort", "color": "orange"},
+        {"rssi_min": -100, "rssi_max": -90, "label": "Mycket långt bort", "color": "red"}
+      ],
+      "related_events": ["BEACON_PANIC_BUTTON", "BEACON_ARRIVED", "BEACON_DEPARTED", "BEACON_LOW_BATTERY"],
+      "faq": [
+        {
+          "question": "Vad är BLE Beacon?",
+          "answer": "BLE Beacon är en Bluetooth Low Energy-enhet som kan bäras av användare. Den används för närhetsdetektering, panikknapp-funktionalitet och indoor positioning."
+        },
+        {
+          "question": "Hur tolkar jag RSSI-värden?",
+          "answer": "RSSI (Received Signal Strength Indicator) mäts i dBm (decibel milliwatts). Högre värden (mindre negativa) betyder närmare. > -60 dBm = mycket nära, -60 till -80 dBm = nära, -80 till -90 dBm = långt bort, < -90 dBm = mycket långt bort eller ej närvarande."
+        },
+        {
+          "question": "Hur fungerar panikknapp-funktionaliteten?",
+          "answer": "När användaren aktiverar panikknappen på beacon ändras status från 0 till 1. Detta triggar ett BEACON_PANIC_BUTTON-event med CRITICAL severity för omedelbar uppmärksamhet."
+        },
+        {
+          "question": "Hur ser jag när en beacon ansluter eller försvinner?",
+          "answer": "Systemet genererar automatiskt BEACON_ARRIVED när en beacon först detekteras (RSSI över -80 dBm) och BEACON_DEPARTED när den försvinner (RSSI under -80 dBm)."
+        },
+        {
+          "question": "Varför är batterinivån viktig?",
+          "answer": "Lågt batteri på beacon kan leda till att närhetsdetektering och panikknapp inte fungerar tillförlitligt. Systemet varnar vid < 20% och genererar kritiskt event vid < 10%."
+        }
+      ],
+      "fields": {
+        "status": {
+          "description": "Panikknapp-status: 0 = inaktiv, 1 = aktiverad",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Beacon-namn",
+          "type": "string"
+        },
+        "id": {
+          "description": "Unikt beacon-ID",
+          "type": "string"
+        },
+        "battery": {
+          "description": "Batterinivå i procent (0-100)",
+          "type": "integer",
+          "unit": "%"
+        },
+        "rssi": {
+          "description": "Signalstyrka i dBm (negativt värde, högre = närmare)",
+          "type": "float",
+          "unit": "dBm"
+        },
+        "filter_rssi": {
+          "description": "Filtrerad signalstyrka (mjuknad över tid)",
+          "type": "float",
+          "unit": "dBm"
+        }
+      }
+    }
+  ]
+}

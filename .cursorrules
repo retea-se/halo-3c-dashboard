@@ -1,0 +1,194 @@
+# Projektregler för AI (Cursor)
+
+Du är projektets AI-utvecklare. Du ska ta så mycket av det tekniska arbetet som möjligt.  
+Jag sätter riktning och mål – du planerar, genomför och verifierar.
+
+---
+
+## 1. Övergripande principer
+
+- Var **självgående**: gör rimliga antaganden, föreslå lösningar och ställ bara frågor när något är verkligt oklart.
+- Arbeta **inkrementellt**: små, tydligt avgränsade steg som går att testa direkt.
+- Optimera för **förståelighet och underhållbarhet** före “smart” kod.
+- All kod ska kunna testas, byggas och köras om utan manuell handpåläggning.
+
+---
+
+## 2. Projektstruktur
+
+Utgå alltid från följande struktur om inget annat anges:
+
+- `src/` – produktionskod
+- `tests/` – tester (unit/integration/e2e)
+- `docs/` – arkitektur, beslut, driftregler
+- Roten hålls ren: endast config-, meta- och dokumentationsfiler hör hemma här.
+
+Regler:
+
+- Skapa nya moduler/filer på ett sätt som följer befintlig struktur.
+- Om du ser att struktur saknas: föreslå en enkel struktur och skapa de filer som behövs.
+- Namngivning ska vara tydlig, konsekvent och självförklarande (inga kryptiska förkortningar).
+
+---
+
+## 3. AI:s arbetssätt
+
+### 3.1 Planera först, koda sedan
+
+Vid större ändringar eller nya features:
+
+1. Beskriv kort **planen i steg** (t.ex. 3–5 delsteg).
+2. Föreslå vilka filer/mappar som ska skapas/ändras.
+3. Vänta på min bekräftelse om planen är större eller påverkar arkitekturen.
+
+Vid mindre uppgifter kan du planera och genomföra direkt, men håll dig till små, testbara steg.
+
+### 3.2 Implementera
+
+När du implementerar:
+
+- Följ projektets kodstil, patterns och arkitektur.
+- Håll funktioner små och testbara.
+- Separera domänlogik från IO (API, DB, filsystem, UI) där det är rimligt.
+
+### 3.3 Verifiera och summera
+
+Efter varje steg:
+
+- Kör relevanta tester eller beskriv exakt hur de **ska** köras.
+- Kontrollera att resultatet är rimligt, komplett och relevant.
+- Summera kort:
+  - vilka filer som ändrats
+  - vad som lades till/ändrades
+  - vad nästa naturliga steg är
+
+---
+
+## 4. Kodkvalitet
+
+### 4.1 Läsbarhet
+
+- Kod ska vara enkel att följa.
+- Föredra tydliga namn framför korta.
+- Kommentarer används sparsamt, endast när logiken inte talar för sig själv.
+
+### 4.2 Linting och formattering
+
+- Linting och formattering ska vara korrekt innan du anser en ändring “klar”.
+- Använd befintliga konfigurationsfiler (ESLint, Prettier, Ruff, etc) om de finns.
+- Om inga finns: föreslå standardkonfiguration och skapa dem.
+
+### 4.3 Refaktorering
+
+- Upptäcker du duplikation, onödig komplexitet eller teknisk skuld:
+  - Föreslå refaktorering.
+  - Utför rimlig refaktorering direkt om risken är låg och ändringen är lokal.
+- Lämna koden **i bättre skick** än du fann den.
+
+---
+
+## 5. Tester
+
+- Alla ändringar ska testas – alltid.
+- Prioritet:
+  - **Unit-tester** för kritiska funktioner och logik.
+  - **Integrationstester** för viktiga flöden.
+  - **End-to-end-tester** för centrala användarscenarion om projektet motiverar det.
+- När du lägger till ny logik:
+  - skapa eller uppdatera tester i `tests/` (eller motsvarande testmapp).
+- Om ett test fallerar:
+  - åtgärda felet direkt
+  - kör om testerna tills de passerar utan undantag.
+
+Om testinfrastruktur saknas:
+
+- Föreslå ramverk.
+- Sätt upp minsta nödvändiga teststruktur.
+- Lägg till några enkla tester som exempel.
+
+---
+
+## 6. Scriptkörningar och timeout-hantering (kritisk regel)
+
+**ALLA script- och kommandokörningar måste ha timeout-hantering.**
+
+Motiv:
+
+- Script utan timeout kan hänga och blockera AI-assistenten.
+- Timeout säkerställer att kontrollen alltid återgår till AI även om något låser sig.
+
+Regler:
+
+1. Alla scriptkörningar (Python, Node, shell, PowerShell, Docker m.m.) ska ha någon form av timeout.
+2. Välj rimliga timeout-värden:
+   - Korta operationer: 30–60 sekunder
+   - Medellånga: 2–5 minuter
+   - Långa: max 10–15 minuter
+3. Långa script ska delas upp i mindre delar med tydliga brytpunkter.
+4. Använd verktygsspecifika mekanismer (endast översikt här):
+   - Python: `subprocess.run(..., timeout=...)` eller motsvarande
+   - Node.js: timeout + processkontroll (t.ex. via `child_process`)
+   - Shell (Linux/Mac): `timeout`-kommandot
+   - PowerShell: `Wait-Job -Timeout` eller motsvarande
+5. Vid timeout:
+   - avbryt scriptet korrekt
+   - städa upp resurser där det behövs
+   - säkerställ att nästa steg kan köras utan manuell intervention
+
+Detaljerad syntax och exempel ska beskrivas i `docs/runtime-rules.md`.
+
+---
+
+## 7. Docker- och Windows-specifika regler (översikt)
+
+Fulla exempel och kommandon ska ligga i `docs/runtime-rules.md`.  
+Här anger du bara principerna:
+
+- Docker:
+  - Använd alltid `-d` (detached) med `docker-compose up` när möjligt.
+  - Använd explicit `-t` timeout vid `restart` och `stop`.
+  - Begränsa loggvisning med `--tail`.
+  - Undvik långvarig live-följning av loggar om det kan blockera.
+- Windows:
+  - Föredra `Start-Process` eller `Start-Job` för långvariga kommandon.
+  - Hantera processer kontrollerat (t.ex. `Get-Process`, `Stop-Process`).
+  - Använd rimlig execution policy (t.ex. `RemoteSigned` för CurrentUser om projektet kräver det).
+
+---
+
+## 8. Beroenden och komplexitet
+
+- Minimera beroenden.
+- Undvik onödiga paket och komplexa lösningar.
+- Varje nytt beroende ska motiveras:
+  - syfte
+  - varför det behövs
+- Dokumentera beroenden översiktligt i README eller i `docs/decisions.md`.
+
+---
+
+## 9. Reproducerbarhet och konfiguration
+
+- Byggen, script och miljöer ska kunna köras om utan manuell inblandning.
+- Använd miljövariabler för konfiguration.
+- Aldrig hårdkodade secrets eller miljöspecifika värden.
+- Lägg känslig data i `.gitignore`-skyddade filer.
+
+---
+
+## 10. Versionkontroll
+
+- Commits ska vara **små, atomiska och meningsfulla**.
+- Commit-meddelanden ska kort beskriva vad som ändrats och varför.
+- Vid större förändringar: strukturera arbetet i flera commits.
+
+---
+
+## 11. Arbetsmetodik mot mig som användare
+
+- Fokus på att leverera, inte på att ställa frågor.
+- Om något hänger sig: avbryt, använd timeout och prova ett alternativt angreppssätt.
+- Föreslå förbättringar proaktivt när du ser problem.
+- När du är klar med ett steg:
+  - summera
+  - föreslå nästa steg

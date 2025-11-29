@@ -1,0 +1,11 @@
+{
+  "port": "COM3",
+  "exitCode": 0,
+  "state": "success",
+  "logFile": "C:\\Users\\marcu\\OneDrive\\Dokument\\_synology_1\\scripts\\logs\\esp32-flash-20251115-184500.log",
+  "updatedAt": "2025-11-15T19:23:09.6603756+01:00",
+  "lastLine": "ESP32 flash klar (upload). Logg: C:\\Users\\marcu\\OneDrive\\Dokument\\_synology_1\\scripts\\logs\\esp32-flash-20251115-184500.log",
+  "project": "C:\\Users\\marcu\\OneDrive\\Dokument\\_synology_1\\projects\\waveshare\\firmware",
+  "action": "upload",
+  "startedAt": "2025-11-15T19:22:14.3640970+01:00"
+}

@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # InfluxDB - Time-series database
+  influxdb:
+    image: influxdb:2.7
+    container_name: halo-influxdb
+    restart: unless-stopped
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD:-adminpassword}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG:-halo-org}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET:-halo-sensors}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN}
+      - INFLUXD_HTTP_BIND_ADDRESS=:8086
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    networks:
+      - halo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Ingen port-exponering - endast internt nätverk
+
+  # Backend API - FastAPI
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+      target: api
+    container_name: halo-backend
+    restart: unless-stopped
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-halo-org}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-halo-sensors}
+      - HALO_IP=${HALO_IP:-192.168.0.73}
+      - HALO_USER=${HALO_USER:-admin}
+      - HALO_PASS=${HALO_PASS}
+      - DEVICE_ID=${DEVICE_ID:-halo-device-1}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - DEMO_MODE=${DEMO_MODE:-true}
+      - DEMO_USERNAME=${DEMO_USERNAME:-admin}
+      - DEMO_PASSWORD=${DEMO_PASSWORD:-admin}
+    volumes:
+      - ./src/backend/api:/app/api:ro
+      - ./src/backend/services:/app/services:ro
+      - ./src/backend/data:/app/data:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - halo-network
+
+  # Collector Service - Samlar data från Halo 3C
+  collector:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+      target: collector
+    container_name: halo-collector
+    restart: unless-stopped
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-halo-org}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-halo-sensors}
+      - HALO_IP=${HALO_IP:-192.168.0.73}
+      - HALO_USER=${HALO_USER:-admin}
+      - HALO_PASS=${HALO_PASS}
+      - DEVICE_ID=${DEVICE_ID:-halo-device-1}
+      - COLLECTION_INTERVAL=${COLLECTION_INTERVAL:-10}
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    extra_hosts:
+      - "halo-sensor:192.168.0.73"
+    networks:
+      - halo-network
+    # Ingen port-exponering - bakgrundsservice
+
+  # Frontend - React SPA
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    container_name: halo-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      - REACT_APP_API_URL=http://backend:8000
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    networks:
+      - halo-network
+    # Endast frontend exponeras (via Tailscale Funnel)
+
+networks:
+  halo-network:
+    driver: bridge
+
+volumes:
+  influxdb-data:
+    driver: local
+
