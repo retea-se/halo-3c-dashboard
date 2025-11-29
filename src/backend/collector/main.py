@@ -181,7 +181,7 @@ def main():
                 # Skriv events till InfluxDB och broadcast via WebSocket
                 for event_dict in events:
                     try:
-                        from ..models.events import Event
+                        from models.events import Event
                         event = Event(**event_dict)
                         created_event = event_service.create_event(event)
                         logger.info(f"Created event: {created_event.type.value} - {created_event.summary}")
