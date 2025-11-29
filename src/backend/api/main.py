@@ -4,13 +4,15 @@ Halo 3C Dashboard - FastAPI Backend
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import sensors, events, auth, system, beacons
+from .routes import sensors, events, auth, system, beacons, occupancy
 from .websocket import router as websocket_router
 
 app = FastAPI(
-    title="Halo 3C Dashboard API",
-    description="Backend API for Halo 3C Smart Sensor Dashboard",
-    version="1.0.0"
+    title="Tekniklokaler Dashboard API",
+    description="Backend API for Tekniklokaler - Smart Sensor Monitoring for Technical Spaces",
+    version="2.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
 )
 
 # CORS middleware - konfigureras för frontend
@@ -32,6 +34,7 @@ app.include_router(events.router, prefix="/api/events", tags=["events"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(system.router, prefix="/api/system", tags=["system"])
 app.include_router(beacons.router, prefix="/api/beacons", tags=["beacons"])
+app.include_router(occupancy.router, prefix="/api/occupancy", tags=["occupancy"])
 app.include_router(websocket_router, tags=["websocket"])
 
 

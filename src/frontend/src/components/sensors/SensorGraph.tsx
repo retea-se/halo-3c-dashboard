@@ -1,8 +1,8 @@
 /**
- * SensorGraph - Historisk graf med pedagogiska nivåmarkörer
+ * SensorGraph - Historisk graf med pedagogiska nivåmarkörer och events
  */
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea, ReferenceLine } from 'recharts';
 import { useTheme } from '../../theme/ThemeProvider';
 
 interface GraphLevel {
@@ -12,12 +12,21 @@ interface GraphLevel {
   color: string;
 }
 
+interface Event {
+  id: string;
+  timestamp: string;
+  type: string;
+  severity: string;
+  summary: string;
+}
+
 interface SensorGraphProps {
   sensorId: string;
   data: Array<{ timestamp: string; value: number }>;
   metadata?: any;
   unit: string;
   graphLevels?: GraphLevel[];
+  events?: Event[];
 }
 
 export const SensorGraph: React.FC<SensorGraphProps> = ({
@@ -25,6 +34,7 @@ export const SensorGraph: React.FC<SensorGraphProps> = ({
   metadata,
   unit,
   graphLevels,
+  events = [],
 }) => {
   const { colors } = useTheme();
 
@@ -67,6 +77,39 @@ export const SensorGraph: React.FC<SensorGraphProps> = ({
   const values = chartData.map((d) => d.value);
   const minValue = values.length > 0 ? Math.min(...values, 0) * 0.9 : 0;
   const maxValue = values.length > 0 ? Math.max(...values) * 1.1 : 100;
+
+  // Filtrera events inom tidsperioden och mappa till chart-format
+  const eventLines = events
+    .filter((event) => {
+      const eventTime = new Date(event.timestamp).getTime();
+      const dataTimes = chartData.map((d) => new Date(d.fullTime).getTime());
+      if (dataTimes.length === 0) return false;
+      const minTime = Math.min(...dataTimes);
+      const maxTime = Math.max(...dataTimes);
+      return eventTime >= minTime && eventTime <= maxTime;
+    })
+    .map((event) => {
+      const eventTime = new Date(event.timestamp);
+      return {
+        time: eventTime.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
+        fullTime: event.timestamp,
+        type: event.type,
+        severity: event.severity,
+        summary: event.summary,
+      };
+    });
+
+  // Färger för olika event severities
+  const getEventColor = (severity: string) => {
+    switch (severity) {
+      case 'CRITICAL':
+        return colors.error;
+      case 'WARNING':
+        return colors.warning;
+      default:
+        return colors.text.secondary;
+    }
+  };
 
   return (
     <div style={{ width: '100%', height: '300px' }}>
@@ -112,6 +155,22 @@ export const SensorGraph: React.FC<SensorGraphProps> = ({
             dot={false}
             activeDot={{ r: 4 }}
           />
+          {/* Event markörer som vertikala linjer */}
+          {eventLines.map((event, idx) => (
+            <ReferenceLine
+              key={`event-${idx}`}
+              x={event.time}
+              stroke={getEventColor(event.severity)}
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              label={{
+                value: event.type,
+                position: 'top',
+                fill: getEventColor(event.severity),
+                fontSize: 10,
+              }}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
 

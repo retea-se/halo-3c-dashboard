@@ -34,6 +34,17 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    proxy: {
+      '/api': {
+        target: 'http://REDACTED_SERVER_IP:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/ws': {
+        target: 'ws://REDACTED_SERVER_IP:8000',
+        ws: true,
+      },
+    },
   },
   build: {
     outDir: 'build',

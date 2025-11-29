@@ -53,20 +53,35 @@ async def get_all_sensor_metadata() -> List[dict]:
         raise HTTPException(status_code=500, detail=f"Error loading sensor metadata: {str(e)}")
 
 
-@router.get("/meta/{sensor_id}")
+@router.get("/meta/{sensor_id:path}")
 async def get_sensor_metadata(sensor_id: str) -> dict:
     """
-    Hämta metadata för en specifik sensor
+    Hamta metadata for en specifik sensor
 
     Args:
-        sensor_id: Sensor-ID (t.ex. "co2sensor_co2")
+        sensor_id: Sensor-ID (t.ex. "co2sensor_co2" eller "htsensor/ctemp")
 
     Returns:
         Sensor-metadata
     """
     try:
         sensors = load_sensor_metadata()
-        sensor = next((s for s in sensors if s.get("id") == sensor_id), None)
+
+        # Normalisera sensor_id: konvertera / till _ for matchning
+        normalized_id = sensor_id.replace("/", "_")
+
+        # Sok forst pa exakt matchning, sedan pa normaliserad
+        sensor = next(
+            (s for s in sensors if s.get("id") == sensor_id or s.get("id") == normalized_id),
+            None
+        )
+
+        # Sok ocksa pa technical_name
+        if not sensor:
+            sensor = next(
+                (s for s in sensors if s.get("technical_name") == sensor_id),
+                None
+            )
 
         if not sensor:
             raise HTTPException(status_code=404, detail=f"Sensor {sensor_id} not found")
@@ -122,6 +137,17 @@ async def get_sensor_history(
     """
     try:
         service = get_sensor_service()
+
+        # Specialhantering för heartbeat
+        if sensor_id == "heartbeat/status" or sensor_id == "heartbeat":
+            history = service.get_heartbeat_history(
+                from_time=from_time,
+                to_time=to_time,
+                limit=limit,
+                device_id=device_id
+            )
+            return history
+
         history = service.get_sensor_history(
             sensor_id=sensor_id,
             from_time=from_time,
@@ -132,4 +158,37 @@ async def get_sensor_history(
         return history
     except Exception as e:
         logger.error(f"Failed to get sensor history: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/heartbeat/history")
+async def get_heartbeat_history(
+    from_time: Optional[datetime] = None,
+    to_time: Optional[datetime] = None,
+    limit: int = Query(1000, ge=1, le=10000),
+    device_id: Optional[str] = None
+):
+    """
+    Hämta heartbeat-historik för att se när Halo varit nåbar/onåbar
+
+    Args:
+        from_time: Starttid (ISO8601, optional)
+        to_time: Sluttid (ISO8601, optional)
+        limit: Max antal datapoints (1-10000)
+        device_id: Device ID (optional)
+
+    Returns:
+        Lista med heartbeat-historik
+    """
+    try:
+        service = get_sensor_service()
+        history = service.get_heartbeat_history(
+            from_time=from_time,
+            to_time=to_time,
+            limit=limit,
+            device_id=device_id
+        )
+        return history
+    except Exception as e:
+        logger.error(f"Failed to get heartbeat history: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

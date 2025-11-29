@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "last_updated": "2025-01-27",
+  "version": "2.0.0",
+  "last_updated": "2025-11-29",
   "sensors": [
     {
       "id": "htsensor_ctemp",
@@ -169,6 +169,52 @@
       ]
     },
     {
+      "id": "co2sensor_co2fo",
+      "technical_name": "co2sensor/co2fo",
+      "display_name": "Koldioxid (CO2)",
+      "short_description": "Mater koldioxidhalten i luften med hog precision.",
+      "long_description": "Koldioxidnivaer mats i parts per million (ppm) och indikerar ventilationskvalitet. Hoga varden (>1000 ppm) kan orsaka trotthet och nedsatt koncentrationsformaga. Utomhus ar CO2-nivaer cirka 400 ppm. Denna sensor har forbattrad filtrering for stabila matningar.",
+      "category": "Luftkvalitet",
+      "unit": "ppm",
+      "data_type": "number",
+      "icon": "co2-icon.svg",
+      "normal_range": {
+        "min": 400,
+        "max": 1000,
+        "description": "Utomhusnivaer ar cirka 400 ppm. Inomhus bor nivaer hallas under 1000 ppm for optimal komfort och koncentration."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 1000,
+          "max": 2000,
+          "message": "Over 1000 ppm: Samre luftkvalitet. Overvag ventilation."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 2000,
+          "message": "Over 2000 ppm: Mycket hog niva. Ventilera omedelbart."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 800, "label": "God luft", "color": "green"},
+        {"min": 800, "max": 1500, "label": "Mattlig luftkvalitet", "color": "yellow"},
+        {"min": 1500, "max": 2000, "label": "Behover ventileras", "color": "orange"},
+        {"min": 2000, "label": "Kritisk niva", "color": "red"}
+      ],
+      "related_events": ["CO2cal"],
+      "faq": [
+        {
+          "question": "Vad betyder CO2-vardena?",
+          "answer": "CO2-nivaer mater andelen koldioxid i luften. Hoga nivaer indikerar otillracklig ventilation och kan paverka halsa och koncentration."
+        },
+        {
+          "question": "Vad ar normalt?",
+          "answer": "Utomhus ar CO2-nivaer cirka 400 ppm. Inomhus rekommenderas varden under 1000 ppm for bra luftkvalitet. Over 2000 ppm anses som daligt."
+        }
+      ]
+    },
+    {
       "id": "co2sensor_tvoc",
       "technical_name": "co2sensor/tvoc",
       "display_name": "TVOC (Total VOC)",
@@ -211,6 +257,55 @@
         {
           "question": "Hur påverkar TVOC hälsan?",
           "answer": "Höga TVOC-nivåer kan orsaka huvudvärk, irritation i ögon och luftvägar, och andra hälsoproblem. Det är viktigt att hålla nivåerna låga."
+        }
+      ]
+    },
+    {
+      "id": "AQI_src",
+      "technical_name": "AQI/src",
+      "display_name": "Air Quality Index",
+      "short_description": "Overgripande luftkvalitetsindex (0-5 skala).",
+      "long_description": "AQI (Air Quality Index) ar ett sammanfattat index fran 0-5 som kombinerar flera luftkvalitetsmatningar. 0 = Utmarkt, 5 = Mycket daligt. Indexet ger en snabb overblick over luftkvaliteten.",
+      "category": "Halsoindex",
+      "unit": "Index",
+      "data_type": "number",
+      "icon": "aqi-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 2,
+        "description": "AQI 0-2 ar 'Bra' och anses vara halsosamt for alla."
+      },
+      "warning_thresholds": [
+        {
+          "level": "INFO",
+          "min": 2,
+          "max": 3,
+          "message": "AQI 2-3: Mattlig luftkvalitet."
+        },
+        {
+          "level": "WARNING",
+          "min": 3,
+          "max": 4,
+          "message": "AQI 3-4: Nedsatt luftkvalitet, overvag ventilation."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 4,
+          "message": "AQI 4-5: Dalig luftkvalitet, atgard kravs."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 1, "label": "Utmarkt", "color": "green"},
+        {"min": 1, "max": 2, "label": "Bra", "color": "lightgreen"},
+        {"min": 2, "max": 3, "label": "Mattlig", "color": "yellow"},
+        {"min": 3, "max": 4, "label": "Dalig", "color": "orange"},
+        {"min": 4, "label": "Mycket dalig", "color": "red"}
+      ],
+      "related_events": ["AQI"],
+      "faq": [
+        {
+          "question": "Vad betyder AQI-vardena?",
+          "answer": "AQI (Air Quality Index) ar ett sammanfattat index fran 0-5. 0-1 ar utmarkt, 1-2 ar bra, 2-3 ar mattligt, 3-4 ar daligt, och 4-5 ar mycket daligt."
         }
       ]
     },
@@ -277,6 +372,90 @@
         {
           "question": "Vad är normalt luftkvalitetsindex?",
           "answer": "Normalt inomhus AQI är 0-50 (Bra). Värden över 100 bör uppmärksammas och kan kräva åtgärder som ventilation eller luftrening."
+        }
+      ]
+    },
+    {
+      "id": "pmsensor_pm2p5conc",
+      "technical_name": "pmsensor/pm2p5conc",
+      "display_name": "PM2.5",
+      "short_description": "Mater fina partiklar (PM2.5) i luften.",
+      "long_description": "PM2.5 (Particulate Matter 2.5) mater partiklar mindre an 2.5 mikrometer i diameter. Dessa sma partiklar kan tranga djupt in i lungorna och paverka halsan. Matningen gors i mikrogram per kubikmeter.",
+      "category": "Luftkvalitet",
+      "unit": "ug/m3",
+      "data_type": "number",
+      "icon": "pm25-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 25,
+        "description": "PM2.5-nivaer under 25 ug/m3 anses vara bra for inomhusmiljoer."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 25,
+          "max": 50,
+          "message": "PM2.5 over 25 ug/m3: Mattligt hoga nivaer."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 50,
+          "message": "PM2.5 over 50 ug/m3: Mycket hoga nivaer, kan paverka halsan."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 15, "label": "Bra", "color": "green"},
+        {"min": 15, "max": 25, "label": "Mattligt", "color": "yellow"},
+        {"min": 25, "max": 50, "label": "Hogt", "color": "orange"},
+        {"min": 50, "label": "Mycket hogt", "color": "red"}
+      ],
+      "related_events": ["PM2.5"],
+      "faq": [
+        {
+          "question": "Vad ar PM2.5?",
+          "answer": "PM2.5 star for partiklar mindre an 2.5 mikrometer i diameter. Dessa sma partiklar kan tranga djupt in i lungorna och paverka halsan."
+        }
+      ]
+    },
+    {
+      "id": "pmsensor_pm10conc",
+      "technical_name": "pmsensor/pm10conc",
+      "display_name": "PM10",
+      "short_description": "Mater storre partiklar (PM10) i luften.",
+      "long_description": "PM10 (Particulate Matter 10) mater partiklar mindre an 10 mikrometer i diameter. Dessa partiklar kan tranga in i luftvagar och paverka halsan.",
+      "category": "Luftkvalitet",
+      "unit": "ug/m3",
+      "data_type": "number",
+      "icon": "pm10-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 50,
+        "description": "PM10-nivaer under 50 ug/m3 anses vara bra for inomhusmiljoer."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 50,
+          "max": 100,
+          "message": "PM10 over 50 ug/m3: Mattligt hoga nivaer."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 100,
+          "message": "PM10 over 100 ug/m3: Mycket hoga nivaer."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 30, "label": "Bra", "color": "green"},
+        {"min": 30, "max": 50, "label": "Mattligt", "color": "yellow"},
+        {"min": 50, "max": 100, "label": "Hogt", "color": "orange"},
+        {"min": 100, "label": "Mycket hogt", "color": "red"}
+      ],
+      "related_events": ["PM10"],
+      "faq": [
+        {
+          "question": "Vad ar skillnaden mellan PM2.5 och PM10?",
+          "answer": "PM2.5 ar mindre partiklar (under 2.5 um) som kan tranga djupt in i lungorna, medan PM10 ar storre partiklar (under 10 um) som ofta fastnar i ovre luftvagar."
         }
       ]
     },
@@ -422,6 +601,115 @@
       ]
     },
     {
+      "id": "luxsensor_alux",
+      "technical_name": "luxsensor/alux",
+      "display_name": "Ljusniva",
+      "short_description": "Mater ljusnivaen i lux.",
+      "long_description": "Ljusniva mats i lux och visar belysningsstyrkan i rummet. Tillracklig belysning ar viktigt for arbetskomfort och produktivitet. Kontorsmiljoer bor ha 300-500 lux.",
+      "category": "Ljus",
+      "unit": "lux",
+      "data_type": "number",
+      "icon": "light-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 200,
+        "description": "I mörka miljöer (skåp, förråd) är värden under 50 lux normalt. Kontorsmiljöer bör ha 300-500 lux."
+      },
+      "warning_thresholds": [
+        {
+          "level": "INFO",
+          "min": 200,
+          "max": 300,
+          "message": "Ljusniva 200-300 lux: Nagot svag belysning."
+        },
+        {
+          "level": "WARNING",
+          "max": 200,
+          "message": "Ljusniva under 200 lux: For svag belysning, kan paverka produktivitet."
+        },
+        {
+          "level": "WARNING",
+          "min": 750,
+          "message": "Ljusniva over 750 lux: Stark belysning, kan orsaka obehag."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 100, "label": "Mycket svagt", "color": "red"},
+        {"min": 100, "max": 300, "label": "Svagt", "color": "orange"},
+        {"min": 300, "max": 500, "label": "Normalt", "color": "green"},
+        {"min": 500, "max": 750, "label": "Ljust", "color": "yellow"},
+        {"min": 750, "label": "Mycket ljust", "color": "orange"}
+      ],
+      "related_events": ["Light"],
+      "faq": [
+        {
+          "question": "Vad ar normal ljusniva for kontor?",
+          "answer": "Rekommenderad belysning for kontorsarbete ar 300-500 lux. For detaljarbete kan hogre nivaer (500-1000 lux) behovas."
+        },
+        {
+          "question": "Hur paverkar ljus produktiviteten?",
+          "answer": "Tillracklig belysning ar viktigt for koncentration och minskar ogontrotthet. For svag belysning kan leda till huvudvark och minskad produktivitet."
+        }
+      ]
+    },
+    {
+      "id": "luxsensor_aluxfilt",
+      "technical_name": "luxsensor/aluxfilt",
+      "display_name": "Ljusnivå",
+      "short_description": "Mäter ljusnivån i lux (filtrerad).",
+      "long_description": "Ljusnivå mäts i lux och visar belysningsstyrkan i rummet. Filtrerad version ger mer stabila värden. Tillräcklig belysning är viktigt för arbetskomfort och produktivitet. Kontorsmiljöer bör ha 300-500 lux. I mörka miljöer (t.ex. skåp) är värden under 50 lux normalt.",
+      "category": "Ljus",
+      "unit": "lux",
+      "data_type": "number",
+      "icon": "light-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 200,
+        "description": "I mörka miljöer (skåp, förråd) är värden under 50 lux normalt. Kontorsmiljöer bör ha 300-500 lux."
+      },
+      "warning_thresholds": [
+        {
+          "level": "INFO",
+          "min": 200,
+          "max": 300,
+          "message": "Ljusnivå 200-300 lux: Något svag belysning."
+        },
+        {
+          "level": "WARNING",
+          "max": 200,
+          "message": "Ljusnivå under 200 lux: För svag belysning för kontorsarbete, kan påverka produktivitet."
+        },
+        {
+          "level": "WARNING",
+          "min": 750,
+          "message": "Ljusnivå över 750 lux: Stark belysning, kan orsaka obehag."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 50, "label": "Mycket mörkt (skåp/förråd)", "color": "gray"},
+        {"min": 50, "max": 200, "label": "Mörkt", "color": "blue"},
+        {"min": 200, "max": 300, "label": "Svagt", "color": "orange"},
+        {"min": 300, "max": 500, "label": "Normalt (kontor)", "color": "green"},
+        {"min": 500, "max": 750, "label": "Ljust", "color": "yellow"},
+        {"min": 750, "label": "Mycket ljust", "color": "orange"}
+      ],
+      "related_events": ["Light"],
+      "faq": [
+        {
+          "question": "Vad är normal ljusnivå för kontor?",
+          "answer": "Rekommenderad belysning för kontorsarbete är 300-500 lux. För detaljarbete kan högre nivåer (500-1000 lux) behövas."
+        },
+        {
+          "question": "Vad är normal ljusnivå i ett mörkt skåp?",
+          "answer": "I ett mörkt skåp eller förråd är värden under 50 lux helt normalt. Filtrerad version (aluxfilt) ger mer stabila värden i mörka miljöer."
+        },
+        {
+          "question": "Vad är skillnaden mellan alux och aluxfilt?",
+          "answer": "alux är ofiltrerad ljusnivå, medan aluxfilt är filtrerad version som ger mer stabila värden, särskilt i mörka miljöer."
+        }
+      ]
+    },
+    {
       "id": "HealthIndex_val",
       "technical_name": "HealthIndex/val",
       "display_name": "Hälsoindex",
@@ -557,6 +845,439 @@
           "unit": "dBm"
         }
       }
+    },
+    {
+      "id": "htsensor_press",
+      "technical_name": "htsensor/press",
+      "display_name": "Lufttryck",
+      "short_description": "Mäter lufttrycket i inches of mercury (inHg).",
+      "long_description": "Lufttryck mäts i inches of mercury (inHg) och visar atmosfäriskt tryck. Normal lufttryck är cirka 29.92 inHg vid havsnivå. Lufttryck kan påverka väderförhållanden och kan användas för väderprognoser.",
+      "category": "Miljö",
+      "unit": "inHg",
+      "data_type": "number",
+      "icon": "pressure-icon.svg",
+      "normal_range": {
+        "min": 28.9,
+        "max": 31.0,
+        "description": "Normal lufttryck vid havsnivå är cirka 29.92 inHg. Värden mellan 28.9-31.0 inHg är typiska för de flesta väderförhållanden."
+      },
+      "warning_thresholds": [
+        {
+          "level": "INFO",
+          "min": 31.0,
+          "message": "Lufttryck över 31.0 inHg: Högtryck, ofta klart väder."
+        },
+        {
+          "level": "INFO",
+          "max": 28.9,
+          "message": "Lufttryck under 28.9 inHg: Lågtryck, ofta molnigt eller regnigt väder."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 28.9, "label": "Mycket lågt", "color": "red"},
+        {"min": 28.9, "max": 29.5, "label": "Lågt", "color": "orange"},
+        {"min": 29.5, "max": 30.5, "label": "Normal", "color": "green"},
+        {"min": 30.5, "max": 31.0, "label": "Högt", "color": "yellow"},
+        {"min": 31.0, "label": "Mycket högt", "color": "orange"}
+      ],
+      "related_events": ["Pressure"],
+      "faq": [
+        {
+          "question": "Vad är normal lufttryck?",
+          "answer": "Normal lufttryck vid havsnivå är cirka 29.92 inHg. Lufttryck varierar med höjd och väderförhållanden."
+        }
+      ]
+    },
+    {
+      "id": "htsensor_millibar",
+      "technical_name": "htsensor/millibar",
+      "display_name": "Lufttryck",
+      "short_description": "Mäter lufttrycket i millibar (hPa).",
+      "long_description": "Lufttryck mäts i millibar (hPa, hectopascal) och visar atmosfäriskt tryck. Normal lufttryck är cirka 1013.25 hPa vid havsnivå. Lufttryck kan påverka väderförhållanden och kan användas för väderprognoser.",
+      "category": "Miljö",
+      "unit": "hPa",
+      "data_type": "number",
+      "icon": "pressure-icon.svg",
+      "normal_range": {
+        "min": 980,
+        "max": 1050,
+        "description": "Normal lufttryck vid havsnivå är cirka 1013.25 hPa. Värden mellan 980-1050 hPa är typiska för de flesta väderförhållanden."
+      },
+      "warning_thresholds": [
+        {
+          "level": "INFO",
+          "min": 1050,
+          "message": "Lufttryck över 1050 hPa: Högtryck, ofta klart väder."
+        },
+        {
+          "level": "INFO",
+          "max": 980,
+          "message": "Lufttryck under 980 hPa: Lågtryck, ofta molnigt eller regnigt väder."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 980, "label": "Mycket lågt", "color": "red"},
+        {"min": 980, "max": 1000, "label": "Lågt", "color": "orange"},
+        {"min": 1000, "max": 1030, "label": "Normal", "color": "green"},
+        {"min": 1030, "max": 1050, "label": "Högt", "color": "yellow"},
+        {"min": 1050, "label": "Mycket högt", "color": "orange"}
+      ],
+      "related_events": ["Pressure"],
+      "faq": [
+        {
+          "question": "Vad är normal lufttryck?",
+          "answer": "Normal lufttryck vid havsnivå är cirka 1013.25 hPa. Lufttryck varierar med höjd och väderförhållanden."
+        }
+      ]
+    },
+    {
+      "id": "gassensor_co",
+      "technical_name": "gassensor/co",
+      "display_name": "Kolmonoxid (CO)",
+      "short_description": "Mäter kolmonoxidhalten i luften.",
+      "long_description": "Kolmonoxid (CO) är en farlig, färglös och luktfri gas som kan orsaka allvarliga hälsoproblem vid höga koncentrationer. CO mäts i parts per million (ppm). Utomhus är CO-nivåer vanligtvis under 9 ppm. Inomhus bör nivåer hållas under 9 ppm för säkerhet.",
+      "category": "Luftkvalitet",
+      "unit": "ppm",
+      "data_type": "number",
+      "icon": "co-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 9,
+        "description": "Utomhus är CO-nivåer vanligtvis under 9 ppm. Inomhus bör nivåer hållas under 9 ppm för säkerhet."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 9,
+          "max": 35,
+          "message": "CO över 9 ppm: Måttligt höga nivåer, överväg ventilation."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 35,
+          "message": "CO över 35 ppm: Mycket höga nivåer, omedelbar ventilation krävs. Evakuera om möjligt."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 9, "label": "Säkert", "color": "green"},
+        {"min": 9, "max": 35, "label": "Måttligt", "color": "yellow"},
+        {"min": 35, "max": 200, "label": "Farligt", "color": "orange"},
+        {"min": 200, "label": "Mycket farligt", "color": "red"}
+      ],
+      "related_events": ["CO"],
+      "faq": [
+        {
+          "question": "Vad är kolmonoxid?",
+          "answer": "Kolmonoxid (CO) är en farlig, färglös och luktfri gas som kan orsaka allvarliga hälsoproblem vid höga koncentrationer. Den kan komma från ofullständig förbränning av bränslen."
+        },
+        {
+          "question": "Vad är säkra CO-nivåer?",
+          "answer": "Utomhus är CO-nivåer vanligtvis under 9 ppm. Inomhus bör nivåer hållas under 9 ppm för säkerhet. Över 35 ppm anses som farligt."
+        }
+      ]
+    },
+    {
+      "id": "gassensor_no2",
+      "technical_name": "gassensor/no2",
+      "display_name": "Kvävedioxid (NO₂)",
+      "short_description": "Mäter kvävedioxidhalten i luften.",
+      "long_description": "Kvävedioxid (NO₂) är en gas som kan påverka luftvägarna och orsaka andningsbesvär, särskilt hos personer med astma eller andra luftvägssjukdomar. NO₂ mäts i parts per billion (ppb). Utomhus är NO₂-nivåer vanligtvis under 100 ppb.",
+      "category": "Luftkvalitet",
+      "unit": "ppb",
+      "data_type": "number",
+      "icon": "no2-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 100,
+        "description": "Utomhus är NO₂-nivåer vanligtvis under 100 ppb. Inomhus bör nivåer hållas under 100 ppb för optimal luftkvalitet."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 100,
+          "max": 200,
+          "message": "NO₂ över 100 ppb: Måttligt höga nivåer, överväg ventilation."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 200,
+          "message": "NO₂ över 200 ppb: Höga nivåer, kan påverka luftvägarna. Ventilera omedelbart."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 50, "label": "Bra", "color": "green"},
+        {"min": 50, "max": 100, "label": "Acceptabelt", "color": "yellow"},
+        {"min": 100, "max": 200, "label": "Högt", "color": "orange"},
+        {"min": 200, "label": "Mycket högt", "color": "red"}
+      ],
+      "related_events": ["NO2"],
+      "faq": [
+        {
+          "question": "Vad är kvävedioxid?",
+          "answer": "Kvävedioxid (NO₂) är en gas som kan påverka luftvägarna och orsaka andningsbesvär, särskilt hos personer med astma eller andra luftvägssjukdomar."
+        }
+      ]
+    },
+    {
+      "id": "gassensor_nh3",
+      "technical_name": "gassensor/nh3",
+      "display_name": "Ammoniak (NH₃)",
+      "short_description": "Mäter ammoniakhalten i luften.",
+      "long_description": "Ammoniak (NH₃) är en gas med en karakteristisk lukt som kan orsaka irritation i ögon, näsa och hals vid höga koncentrationer. NH₃ mäts i parts per million (ppm). Normal inomhusnivå är under 25 ppm.",
+      "category": "Luftkvalitet",
+      "unit": "ppm",
+      "data_type": "number",
+      "icon": "nh3-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 25,
+        "description": "Normal inomhusnivå är under 25 ppm. Högre nivåer kan orsaka irritation."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 25,
+          "max": 50,
+          "message": "NH₃ över 25 ppm: Måttligt höga nivåer, kan orsaka irritation."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 50,
+          "message": "NH₃ över 50 ppm: Höga nivåer, kan orsaka allvarlig irritation. Ventilera omedelbart."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 25, "label": "Bra", "color": "green"},
+        {"min": 25, "max": 50, "label": "Måttligt", "color": "yellow"},
+        {"min": 50, "max": 100, "label": "Högt", "color": "orange"},
+        {"min": 100, "label": "Mycket högt", "color": "red"}
+      ],
+      "related_events": ["NH3"],
+      "faq": [
+        {
+          "question": "Vad är ammoniak?",
+          "answer": "Ammoniak (NH₃) är en gas med en karakteristisk lukt som kan orsaka irritation i ögon, näsa och hals vid höga koncentrationer."
+        }
+      ]
+    },
+    {
+      "id": "pmsensor_raw_0",
+      "technical_name": "pmsensor/raw/0",
+      "display_name": "PM1 Partiklar",
+      "short_description": "Mäter mycket fina partiklar (PM1) i luften.",
+      "long_description": "PM1 (Particulate Matter 1) mäter partiklar mindre än 1 mikrometer i diameter. Dessa mycket små partiklar kan tränga djupt in i lungorna och blodomloppet. Mätningen görs i mikrogram per kubikmeter (µg/m³).",
+      "category": "Luftkvalitet",
+      "unit": "µg/m³",
+      "data_type": "number",
+      "icon": "pm1-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 12,
+        "description": "PM1-nivåer under 12 µg/m³ anses vara bra för inomhusmiljöer."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 12,
+          "max": 35,
+          "message": "PM1 över 12 µg/m³: Måttligt höga nivåer."
+        },
+        {
+          "level": "CRITICAL",
+          "min": 35,
+          "message": "PM1 över 35 µg/m³: Mycket höga nivåer, kan påverka hälsan."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 12, "label": "Bra", "color": "green"},
+        {"min": 12, "max": 35, "label": "Måttligt", "color": "yellow"},
+        {"min": 35, "max": 55, "label": "Högt", "color": "orange"},
+        {"min": 55, "label": "Mycket högt", "color": "red"}
+      ],
+      "related_events": ["PM1"],
+      "faq": [
+        {
+          "question": "Vad är PM1?",
+          "answer": "PM1 står för partiklar mindre än 1 mikrometer i diameter. Dessa mycket små partiklar kan tränga djupt in i lungorna och blodomloppet."
+        }
+      ]
+    },
+    {
+      "id": "pir_max",
+      "technical_name": "pir/max",
+      "display_name": "PIR Rörelse",
+      "short_description": "Detekterar rörelse med passiv infraröd sensor.",
+      "long_description": "PIR (Passive Infrared) sensorn detekterar rörelse genom att mäta infraröd strålning från objekt i rörelse. Sensorn ger en signal när rörelse detekteras. Används för säkerhetsövervakning, beläggningsanalys och automatisk belysning.",
+      "category": "Rörelse",
+      "unit": "Signal",
+      "data_type": "number",
+      "icon": "pir-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 1,
+        "description": "0 = ingen rörelse, 1 = rörelse detekterad."
+      },
+      "warning_thresholds": [],
+      "graph_levels": [
+        {"min": 0, "max": 0, "label": "Ingen rörelse", "color": "gray"},
+        {"min": 1, "max": 1, "label": "Rörelse", "color": "green"}
+      ],
+      "related_events": ["Motion"],
+      "faq": [
+        {
+          "question": "Hur fungerar PIR-sensorn?",
+          "answer": "PIR (Passive Infrared) sensorn detekterar rörelse genom att mäta infraröd strålning från objekt i rörelse. När ett varmt objekt rör sig inom sensorns synfält, detekteras rörelse."
+        }
+      ]
+    },
+    {
+      "id": "accsensor_move",
+      "technical_name": "accsensor/move",
+      "display_name": "Vibration",
+      "short_description": "Detekterar vibration och rörelse med accelerometer.",
+      "long_description": "Accelerometer-sensorn detekterar vibration och rörelse genom att mäta acceleration i tre axlar (x, y, z). Move-flaggan är 1 när rörelse detekteras, 0 när stilla. Används för tamper-detektering, falldetektering och vibration-analys.",
+      "category": "Rörelse",
+      "unit": "Status",
+      "data_type": "number",
+      "icon": "accelerometer-icon.svg",
+      "normal_range": {
+        "min": 0,
+        "max": 1,
+        "description": "0 = ingen vibration/rörelse, 1 = vibration/rörelse detekterad."
+      },
+      "warning_thresholds": [
+        {
+          "level": "WARNING",
+          "min": 1,
+          "message": "Vibration detekterad: Möjlig tamper eller oönskad rörelse."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 0, "label": "Stilla", "color": "gray"},
+        {"min": 1, "max": 1, "label": "Vibration", "color": "orange"}
+      ],
+      "related_events": ["Tamper", "Motion"],
+      "faq": [
+        {
+          "question": "Hur fungerar accelerometer-sensorn?",
+          "answer": "Accelerometer-sensorn mäter acceleration i tre axlar (x, y, z). Move-flaggan är 1 när rörelse detekteras, 0 när stilla. Används för tamper-detektering, falldetektering och vibration-analys."
+        },
+        {
+          "question": "Vad betyder vibration?",
+          "answer": "Vibration indikerar att enheten rör sig eller utsätts för skakningar. Detta kan vara normalt (t.ex. dörrar som slås) eller indikera tamper eller oönskad rörelse."
+        }
+      ]
+    },
+    {
+      "id": "accsensor_x",
+      "technical_name": "accsensor/x",
+      "display_name": "Accelerometer X",
+      "short_description": "Mäter acceleration i X-axeln (milli g).",
+      "long_description": "Accelerometer X-axel mäter acceleration i X-riktningen i milli g (tusendels av gravitationsaccelerationen). Används tillsammans med Y och Z för att beräkna total magnitud och detektera skakningar.",
+      "category": "Rörelse",
+      "unit": "milli g",
+      "data_type": "number",
+      "icon": "accelerometer-icon.svg",
+      "normal_range": {
+        "min": -1000,
+        "max": 1000,
+        "description": "Normal värden varierar beroende på enhetens orientering. Stora avvikelser indikerar rörelse eller skakning."
+      },
+      "related_events": ["Tamper"],
+      "faq": [
+        {
+          "question": "Vad är milli g?",
+          "answer": "Milli g är tusendels av gravitationsaccelerationen (9.81 m/s²). Ett värde på 1000 milli g = 1 g = normal gravitation."
+        }
+      ]
+    },
+    {
+      "id": "accsensor_y",
+      "technical_name": "accsensor/y",
+      "display_name": "Accelerometer Y",
+      "short_description": "Mäter acceleration i Y-axeln (milli g).",
+      "long_description": "Accelerometer Y-axel mäter acceleration i Y-riktningen i milli g (tusendels av gravitationsaccelerationen). Används tillsammans med X och Z för att beräkna total magnitud och detektera skakningar.",
+      "category": "Rörelse",
+      "unit": "milli g",
+      "data_type": "number",
+      "icon": "accelerometer-icon.svg",
+      "normal_range": {
+        "min": -1000,
+        "max": 1000,
+        "description": "Normal värden varierar beroende på enhetens orientering. Stora avvikelser indikerar rörelse eller skakning."
+      },
+      "related_events": ["Tamper"],
+      "faq": [
+        {
+          "question": "Vad är milli g?",
+          "answer": "Milli g är tusendels av gravitationsaccelerationen (9.81 m/s²). Ett värde på 1000 milli g = 1 g = normal gravitation."
+        }
+      ]
+    },
+    {
+      "id": "accsensor_z",
+      "technical_name": "accsensor/z",
+      "display_name": "Accelerometer Z",
+      "short_description": "Mäter acceleration i Z-axeln (milli g).",
+      "long_description": "Accelerometer Z-axel mäter acceleration i Z-riktningen i milli g (tusendels av gravitationsaccelerationen). Används tillsammans med X och Y för att beräkna total magnitud och detektera skakningar.",
+      "category": "Rörelse",
+      "unit": "milli g",
+      "data_type": "number",
+      "icon": "accelerometer-icon.svg",
+      "normal_range": {
+        "min": -1000,
+        "max": 1000,
+        "description": "Normal värden varierar beroende på enhetens orientering. Stora avvikelser indikerar rörelse eller skakning."
+      },
+      "related_events": ["Tamper"],
+      "faq": [
+        {
+          "question": "Vad är milli g?",
+          "answer": "Milli g är tusendels av gravitationsaccelerationen (9.81 m/s²). Ett värde på 1000 milli g = 1 g = normal gravitation."
+        }
+      ]
+    },
+    {
+      "id": "heartbeat_status",
+      "technical_name": "heartbeat/status",
+      "display_name": "Halo Heartbeat",
+      "short_description": "Visar om Halo-sensorn är nåbar och svarar.",
+      "long_description": "Heartbeat-sensorn övervakar kontakten med Halo 3C-sensorn. Värdet 1 = ansluten och svarar, 0 = ej nåbar. Används för att upptäcka nätverksproblem, strömavbrott eller sensorfel. Historiken visar när och hur länge Halo varit onåbar.",
+      "category": "System",
+      "unit": "Status",
+      "data_type": "number",
+      "icon": "heartbeat-icon.svg",
+      "normal_range": {
+        "min": 1,
+        "max": 1,
+        "description": "Värde 1 = ansluten, 0 = ej nåbar. Normal drift ska visa konstant 1."
+      },
+      "warning_thresholds": [
+        {
+          "level": "CRITICAL",
+          "max": 0,
+          "message": "Halo-sensorn är inte nåbar. Kontrollera nätverksanslutning och ström."
+        }
+      ],
+      "graph_levels": [
+        {"min": 0, "max": 0, "label": "Offline", "color": "red"},
+        {"min": 1, "max": 1, "label": "Online", "color": "green"}
+      ],
+      "related_events": ["Heartbeat_Lost", "Heartbeat_Restored"],
+      "faq": [
+        {
+          "question": "Vad betyder heartbeat?",
+          "answer": "Heartbeat är en regelbunden kontroll som verifierar att Halo-sensorn är nåbar och svarar. Om heartbeat misslyckas (värde 0) betyder det att sensorn inte kan nås - antingen pga nätverksproblem, strömavbrott eller sensorfel."
+        },
+        {
+          "question": "Hur ofta kontrolleras heartbeat?",
+          "answer": "Heartbeat kontrolleras vid varje datainsamling (standard var 10:e sekund). Om sensorn inte svarar loggas det som 'offline' (värde 0)."
+        },
+        {
+          "question": "Hur ser jag hur länge Halo varit offline?",
+          "answer": "Titta på heartbeat-grafen över tid. Perioder med värde 0 visar när Halo var offline. Du kan se start- och sluttid samt total duration genom att hovra över grafen."
+        }
+      ]
     }
   ]
 }

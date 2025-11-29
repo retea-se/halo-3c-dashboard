@@ -106,7 +106,7 @@ export const SensorInfoPopover: React.FC<SensorInfoPopoverProps> = ({
       )}
 
       <Link
-        to={`/sensors/info/${metadata.id}`}
+        to={`/sensors/info/${encodeURIComponent(metadata.id || metadata.technical_name || '')}`}
         style={{
           display: 'inline-block',
           fontSize: 'var(--font-size-sm)',
@@ -116,7 +116,7 @@ export const SensorInfoPopover: React.FC<SensorInfoPopoverProps> = ({
         }}
         onClick={onClose}
       >
-        Läs mer →
+        Las mer
       </Link>
     </Card>
   );

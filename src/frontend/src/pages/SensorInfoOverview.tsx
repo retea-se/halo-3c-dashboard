@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeProvider';
 
 interface SensorMetadata {
   id: string;
+  technical_name?: string;
   display_name: string;
   short_description: string;
   category: string;
@@ -166,7 +167,7 @@ export const SensorInfoOverview: React.FC = () => {
             {categorySensors.map((sensor) => (
               <Link
                 key={sensor.id}
-                to={`/sensors/info/${sensor.id}`}
+                to={`/sensors/info/${encodeURIComponent(sensor.id || sensor.technical_name || '')}`}
                 style={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <Card padding="md" style={{ cursor: 'pointer', height: '100%' }}>

@@ -16,18 +16,40 @@ import {
   Legend,
 } from 'recharts';
 
-// Tillgängliga sensorer för jämförelse
-const AVAILABLE_SENSORS = [
+// Fallback-lista med alla kända sensorer (används om API inte returnerar sensorer)
+const FALLBACK_SENSORS = [
+  // Miljö
   { id: 'htsensor/ctemp', name: 'Temperatur', unit: '°C', color: '#ef4444' },
   { id: 'htsensor/humidity', name: 'Luftfuktighet', unit: '%', color: '#3b82f6' },
+  { id: 'htsensor/millibar', name: 'Lufttryck (hPa)', unit: 'hPa', color: '#8b5cf6' },
+  { id: 'htsensor/press', name: 'Lufttryck (inHg)', unit: 'inHg', color: '#a855f7' },
+  // Luftkvalitet
   { id: 'co2sensor/co2fo', name: 'CO₂', unit: 'ppm', color: '#f59e0b' },
+  { id: 'co2sensor/co2', name: 'CO₂ (kalibrerad)', unit: 'ppm', color: '#f97316' },
   { id: 'co2sensor/tvoc', name: 'TVOC', unit: 'ppb', color: '#8b5cf6' },
-  { id: 'pmsensor/pm2p5conc', name: 'PM2.5', unit: 'µg/m³', color: '#10b981' },
+  { id: 'gassensor/co', name: 'Kolmonoxid (CO)', unit: 'ppm', color: '#dc2626' },
+  { id: 'gassensor/no2', name: 'Kvävedioxid (NO₂)', unit: 'ppb', color: '#ea580c' },
+  { id: 'gassensor/nh3', name: 'Ammoniak (NH₃)', unit: 'ppm', color: '#d97706' },
+  // Partiklar
+  { id: 'pmsensor/raw/0', name: 'PM1', unit: 'µg/m³', color: '#10b981' },
+  { id: 'pmsensor/pm2p5conc', name: 'PM2.5', unit: 'µg/m³', color: '#059669' },
+  { id: 'pmsensor/raw/1', name: 'PM2.5 (rådata)', unit: 'µg/m³', color: '#047857' },
   { id: 'pmsensor/pm10conc', name: 'PM10', unit: 'µg/m³', color: '#06b6d4' },
+  { id: 'pmsensor/raw/2', name: 'PM10 (rådata)', unit: 'µg/m³', color: '#0891b2' },
+  // Ljud
   { id: 'audsensor/sum', name: 'Ljudnivå', unit: 'dB', color: '#ec4899' },
-  { id: 'luxsensor/alux', name: 'Ljusnivå', unit: 'lux', color: '#f97316' },
-  { id: 'AQI/src', name: 'AQI', unit: 'Index', color: '#6366f1' },
+  // Ljus
+  { id: 'luxsensor/aluxfilt', name: 'Ljusnivå (filtrerad)', unit: 'lux', color: '#f97316' },
+  { id: 'luxsensor/alux', name: 'Ljusnivå (ofiltrerad)', unit: 'lux', color: '#fb923c' },
+  // Hälsoindex
+  { id: 'AQI/src', name: 'AQI (src)', unit: 'Index', color: '#6366f1' },
+  { id: 'AQI/value', name: 'AQI (value)', unit: 'Index', color: '#4f46e5' },
   { id: 'HealthIndex/val', name: 'Hälsoindex', unit: 'Index', color: '#14b8a6' },
+  // Rörelse
+  { id: 'pir/max', name: 'PIR Rörelse', unit: 'Signal', color: '#22c55e' },
+  { id: 'accsensor/move', name: 'Vibration', unit: 'Status', color: '#16a34a' },
+  // System
+  { id: 'heartbeat/status', name: 'Halo Heartbeat', unit: 'Status', color: '#ef4444' },
 ];
 
 // Tidsintervall
@@ -36,6 +58,9 @@ const TIME_RANGES = [
   { label: '6 timmar', hours: 6 },
   { label: '24 timmar', hours: 24 },
   { label: '7 dagar', hours: 168 },
+  { label: '1 månad', hours: 720 },
+  { label: '6 månader', hours: 4320 },
+  { label: '12 månader', hours: 8640 },
 ];
 
 interface SensorHistoryData {
@@ -50,6 +75,73 @@ export const SensorCompare: React.FC = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [normalizeData, setNormalizeData] = useState(false);
+  const [availableSensors, setAvailableSensors] = useState<Array<{ id: string; name: string; unit: string; color: string }>>(FALLBACK_SENSORS);
+
+  // Hämta tillgängliga sensorer från senaste sensorvärden
+  useEffect(() => {
+    const loadAvailableSensors = async () => {
+      try {
+        const response = await apiService.getLatestSensors();
+        const sensors = response.sensors || [];
+
+        // Hämta metadata för att få display names
+        const metadata = await apiService.getSensorMetadata();
+
+        // Skapa lista med sensorer som faktiskt har data
+        const sensorsWithData = sensors
+          .filter((s: any) => {
+            const value = Object.values(s.values || {})[0];
+            return value !== undefined && value !== null && value < 1000000000000;
+          })
+          .map((s: any) => {
+            // Hitta metadata för denna sensor
+            const meta = metadata.find((m: any) => {
+              const techName = m.technical_name || '';
+              return techName === s.sensor_id || s.sensor_id.includes(techName.split('/')[0]);
+            });
+
+            // Generera färg baserat på sensor-typ
+            const getColor = (sensorId: string) => {
+              if (sensorId.includes('temp')) return '#ef4444';
+              if (sensorId.includes('humidity')) return '#3b82f6';
+              if (sensorId.includes('co2')) return '#f59e0b';
+              if (sensorId.includes('tvoc')) return '#8b5cf6';
+              if (sensorId.includes('pm')) return '#10b981';
+              if (sensorId.includes('gas')) return '#dc2626';
+              if (sensorId.includes('aud')) return '#ec4899';
+              if (sensorId.includes('lux')) return '#f97316';
+              if (sensorId.includes('AQI') || sensorId.includes('Health')) return '#6366f1';
+              if (sensorId.includes('pir') || sensorId.includes('acc')) return '#22c55e';
+              if (sensorId.includes('heartbeat')) return '#ef4444';
+              return '#6b7280';
+            };
+
+            return {
+              id: s.sensor_id,
+              name: meta?.display_name || s.sensor_id,
+              unit: meta?.unit || '',
+              color: getColor(s.sensor_id),
+            };
+          });
+
+        // Kombinera med fallback för sensorer som kanske inte har data just nu
+        const allSensors = [...sensorsWithData];
+        FALLBACK_SENSORS.forEach((fallback) => {
+          if (!allSensors.find((s) => s.id === fallback.id)) {
+            allSensors.push(fallback);
+          }
+        });
+
+        setAvailableSensors(allSensors);
+      } catch (error) {
+        console.error('Failed to load available sensors:', error);
+        // Använd fallback om API misslyckas
+        setAvailableSensors(FALLBACK_SENSORS);
+      }
+    };
+
+    loadAvailableSensors();
+  }, []);
 
   // Ladda historikdata för valda sensorer
   const loadData = useCallback(async () => {
@@ -66,7 +158,7 @@ export const SensorCompare: React.FC = () => {
       // Hämta data för alla valda sensorer parallellt
       const dataPromises = selectedSensors.map(async (sensorId) => {
         try {
-          const history = await apiService.getSensorHistory(sensorId, fromTime, toTime, 500);
+          const history = await apiService.getSensorHistory(sensorId, fromTime, toTime, 1000);
           return { sensorId, data: history || [] };
         } catch (error) {
           console.error(`Failed to load history for ${sensorId}:`, error);
@@ -81,7 +173,7 @@ export const SensorCompare: React.FC = () => {
       const timeMap = new Map<string, any>();
 
       results.forEach(({ sensorId, data }) => {
-        const sensorConfig = AVAILABLE_SENSORS.find((s) => s.id === sensorId);
+        const sensorConfig = availableSensors.find((s) => s.id === sensorId);
         if (!sensorConfig) return;
 
         data.forEach((point: SensorHistoryData) => {
@@ -172,7 +264,7 @@ export const SensorCompare: React.FC = () => {
               Välj sensorer att jämföra
             </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
-              {AVAILABLE_SENSORS.map((sensor) => (
+              {availableSensors.map((sensor) => (
                 <button
                   key={sensor.id}
                   onClick={() => toggleSensor(sensor.id)}
@@ -323,19 +415,19 @@ export const SensorCompare: React.FC = () => {
                     return date.toLocaleString('sv-SE');
                   }}
                   formatter={(value: any, name: string) => {
-                    const sensor = AVAILABLE_SENSORS.find((s) => s.id === name);
+                    const sensor = availableSensors.find((s) => s.id === name);
                     const unit = normalizeData ? '%' : sensor?.unit || '';
                     return [`${typeof value === 'number' ? value.toFixed(1) : value} ${unit}`, sensor?.name || name];
                   }}
                 />
                 <Legend
                   formatter={(value) => {
-                    const sensor = AVAILABLE_SENSORS.find((s) => s.id === value);
+                    const sensor = availableSensors.find((s) => s.id === value);
                     return sensor?.name || value;
                   }}
                 />
                 {selectedSensors.map((sensorId) => {
-                  const sensor = AVAILABLE_SENSORS.find((s) => s.id === sensorId);
+                  const sensor = availableSensors.find((s) => s.id === sensorId);
                   if (!sensor) return null;
                   return (
                     <Line
@@ -368,7 +460,7 @@ export const SensorCompare: React.FC = () => {
           }}
         >
           {selectedSensors.map((sensorId) => {
-            const sensor = AVAILABLE_SENSORS.find((s) => s.id === sensorId);
+            const sensor = availableSensors.find((s) => s.id === sensorId);
             if (!sensor) return null;
 
             // Hitta senaste värdet

@@ -1,11 +1,13 @@
 /**
- * Navbar - Huvudnavigation för Halo 3C Dashboard
+ * Navbar - Huvudnavigation for Tekniklokaler Dashboard
  */
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { Icon } from '../ui/Icon';
+import { HeartbeatIndicator } from '../system/HeartbeatIndicator';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useAuth } from '../auth/AuthProvider';
 
 interface NavItem {
   path: string;
@@ -19,11 +21,18 @@ const navItems: NavItem[] = [
   { path: '/beacons', label: 'Beacons', icon: 'beacon-icon' },
   { path: '/events', label: 'Events', icon: 'events-icon' },
   { path: '/sensors/info', label: 'Sensor Info', icon: 'sensor-info-icon' },
+  { path: '/device', label: 'Enhet', icon: 'device-icon' },
+  { path: '/docs', label: 'Docs', icon: 'docs-icon' },
 ];
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
   const { colors } = useTheme();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <nav
@@ -54,7 +63,7 @@ export const Navbar: React.FC = () => {
           }}
         >
           <Icon name="halo-icon" size={24} color={colors.primary} />
-          <span>Halo 3C Dashboard</span>
+          <span>Tekniklokaler</span>
         </Link>
 
         {/* Navigation Links */}
@@ -87,12 +96,51 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Theme Toggle */}
-      <div>
+      {/* Right side: Heartbeat + Theme Toggle + User info + Logout */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+        <HeartbeatIndicator compact refreshInterval={15000} />
         <ThemeToggle />
+
+        {user && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-sm)',
+            paddingLeft: 'var(--spacing-md)',
+            borderLeft: '1px solid var(--color-border)',
+          }}>
+            <span style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-secondary)',
+            }}>
+              {user.username}
+            </span>
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: 'var(--spacing-xs) var(--spacing-sm)',
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseOver={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = 'var(--color-surface)';
+                (e.target as HTMLButtonElement).style.color = 'var(--color-text-primary)';
+              }}
+              onMouseOut={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                (e.target as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
+              }}
+            >
+              Logga ut
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   );
 };
-
-

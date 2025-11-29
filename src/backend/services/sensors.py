@@ -142,3 +142,98 @@ class SensorService:
     def _datetime_to_flux_time(self, dt: datetime) -> str:
         """Konvertera datetime till Flux-time format"""
         return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    def get_heartbeat_history(
+        self,
+        from_time: Optional[datetime] = None,
+        to_time: Optional[datetime] = None,
+        limit: int = 1000,
+        device_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Hämta heartbeat-historik från InfluxDB
+
+        Args:
+            from_time: Starttid
+            to_time: Sluttid
+            limit: Max antal datapoints
+            device_id: Device ID
+
+        Returns:
+            Lista med heartbeat-historik (connected status över tid)
+        """
+        device_id = device_id or self.device_id
+
+        if from_time is None:
+            from_time = datetime.utcnow() - timedelta(hours=24)
+        if to_time is None:
+            to_time = datetime.utcnow()
+
+        try:
+            query = f'''
+            from(bucket: "{self.bucket}")
+              |> range(start: {self._datetime_to_flux_time(from_time)}, stop: {self._datetime_to_flux_time(to_time)})
+              |> filter(fn: (r) => r["_measurement"] == "halo_heartbeat")
+              |> filter(fn: (r) => r["device_id"] == "{device_id}")
+              |> limit(n: {limit})
+              |> sort(columns: ["_time"])
+            '''
+
+            result = self.influxdb.query_api.query(query=query)
+
+            history = []
+
+            for table in result:
+                for record in table.records:
+                    entry = {
+                        'timestamp': record.get_time().isoformat(),
+                        'field': record.get_field(),
+                        'value': record.get_value(),
+                        'sensor_id': 'heartbeat/status',
+                        'device_id': device_id
+                    }
+                    # Inkludera error-tag om den finns
+                    if 'error' in record.values:
+                        entry['error'] = record.values.get('error')
+                    history.append(entry)
+
+            return history
+
+        except Exception as e:
+            logger.error(f"Failed to get heartbeat history: {e}", exc_info=True)
+            return []
+
+    def get_latest_heartbeat(self, device_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Hämta senaste heartbeat-status
+
+        Returns:
+            Senaste heartbeat eller None
+        """
+        device_id = device_id or self.device_id
+
+        try:
+            query = f'''
+            from(bucket: "{self.bucket}")
+              |> range(start: -1h)
+              |> filter(fn: (r) => r["_measurement"] == "halo_heartbeat")
+              |> filter(fn: (r) => r["device_id"] == "{device_id}")
+              |> last()
+            '''
+
+            result = self.influxdb.query_api.query(query=query)
+
+            for table in result:
+                for record in table.records:
+                    return {
+                        'timestamp': record.get_time().isoformat(),
+                        'connected': record.get_value() == 1.0 if record.get_field() == 'connected' else None,
+                        'response_time_ms': record.get_value() if record.get_field() == 'response_time_ms' else None,
+                        'device_id': device_id
+                    }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get latest heartbeat: {e}", exc_info=True)
+            return None

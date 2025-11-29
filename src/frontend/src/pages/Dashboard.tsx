@@ -6,6 +6,9 @@ import { apiService } from '../services/api';
 import { SensorCard } from '../components/sensors/SensorCard';
 import { BeaconList } from '../components/beacons/BeaconList';
 import { TrendAlerts } from '../components/alerts/TrendAlerts';
+import { DegradationAlerts } from '../components/alerts/DegradationAlerts';
+import { OccupancyCard } from '../components/occupancy/OccupancyCard';
+import { ActivityIndicator } from '../components/activity/ActivityIndicator';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from '../components/ui/Toast';
@@ -31,21 +34,38 @@ const SENSOR_PRIORITY_CONFIG: { [key: string]: { displayName: string; unit: stri
   'htsensor/ctemp': { displayName: 'Temperatur', unit: '°C', category: 'Miljö', normalRange: { min: 18, max: 24 } },
   // Luftfuktighet
   'htsensor/humidity': { displayName: 'Luftfuktighet', unit: '%', category: 'Miljö', normalRange: { min: 30, max: 60 } },
+  // Lufttryck
+  'htsensor/millibar': { displayName: 'Lufttryck', unit: 'hPa', category: 'Miljö', normalRange: { min: 980, max: 1050 } },
+  'htsensor/press': { displayName: 'Lufttryck', unit: 'inHg', category: 'Miljö', normalRange: { min: 28.9, max: 31.0 } },
   // CO2 - co2sensor har bättre precision
   'co2sensor/co2fo': { displayName: 'Koldioxid (CO₂)', unit: 'ppm', category: 'Luftkvalitet', normalRange: { min: 400, max: 1000 } },
+  'co2sensor/co2': { displayName: 'Koldioxid (CO₂)', unit: 'ppm', category: 'Luftkvalitet', normalRange: { min: 400, max: 1000 } },
   // TVOC
   'co2sensor/tvoc': { displayName: 'TVOC', unit: 'ppb', category: 'Luftkvalitet', normalRange: { min: 0, max: 500 } },
+  // Gaser
+  'gassensor/co': { displayName: 'Kolmonoxid (CO)', unit: 'ppm', category: 'Luftkvalitet', normalRange: { min: 0, max: 9 } },
+  'gassensor/no2': { displayName: 'Kvävedioxid (NO₂)', unit: 'ppb', category: 'Luftkvalitet', normalRange: { min: 0, max: 100 } },
+  'gassensor/nh3': { displayName: 'Ammoniak (NH₃)', unit: 'ppm', category: 'Luftkvalitet', normalRange: { min: 0, max: 25 } },
   // AQI
   'AQI/src': { displayName: 'Air Quality Index', unit: 'Index', category: 'Hälsoindex', normalRange: { min: 0, max: 2 } },
+  'AQI/value': { displayName: 'Air Quality Index', unit: 'Index', category: 'Luftkvalitet', normalRange: { min: 0, max: 50 } },
   // Hälsoindex
   'HealthIndex/val': { displayName: 'Hälsoindex', unit: 'Index', category: 'Hälsoindex', normalRange: { min: 0, max: 2 } },
   // PM-sensorer
+  'pmsensor/raw/0': { displayName: 'PM1', unit: 'µg/m³', category: 'Luftkvalitet', normalRange: { min: 0, max: 12 } },
   'pmsensor/pm2p5conc': { displayName: 'PM2.5', unit: 'µg/m³', category: 'Luftkvalitet', normalRange: { min: 0, max: 25 } },
+  'pmsensor/raw/1': { displayName: 'PM2.5', unit: 'µg/m³', category: 'Luftkvalitet', normalRange: { min: 0, max: 12 } },
   'pmsensor/pm10conc': { displayName: 'PM10', unit: 'µg/m³', category: 'Luftkvalitet', normalRange: { min: 0, max: 50 } },
+  'pmsensor/raw/2': { displayName: 'PM10', unit: 'µg/m³', category: 'Luftkvalitet', normalRange: { min: 0, max: 20 } },
   // Ljud
   'audsensor/sum': { displayName: 'Ljudnivå', unit: 'dB', category: 'Ljud', normalRange: { min: 30, max: 60 } },
-  // Ljus
-  'luxsensor/alux': { displayName: 'Ljusnivå', unit: 'lux', category: 'Ljus', normalRange: { min: 300, max: 500 } },
+  // Ljus - använd filtrerad version (aluxfilt) för bättre precision
+  'luxsensor/aluxfilt': { displayName: 'Ljusnivå', unit: 'lux', category: 'Ljus', normalRange: { min: 0, max: 200 } },
+  'luxsensor/alux': { displayName: 'Ljusnivå (ofiltrerad)', unit: 'lux', category: 'Ljus', normalRange: { min: 0, max: 200 } },
+  // Rörelse
+  'pir/max': { displayName: 'PIR Rörelse', unit: 'Signal', category: 'Rörelse', normalRange: { min: 0, max: 1 } },
+  // Accelerometer - visa 0 om move == 0, annars magnitud
+  'accsensor/move': { displayName: 'Vibration', unit: 'Status', category: 'Rörelse', normalRange: { min: 0, max: 1 } },
 };
 
 // Funktion för att filtrera och deduplisera sensorer för dashboard
@@ -185,6 +205,18 @@ export const Dashboard: React.FC = () => {
 
   // Kombinera sensor data med inbyggd konfiguration (prioriteras) eller extern metadata
   const sensorsWithMetadata = sensors.map((sensor) => {
+    // Specialhantering för accelerometer - visa 0 om move == 0
+    if (sensor.sensor_id === 'accsensor/move') {
+      const moveValue = Object.values(sensor.values)[0];
+      if (moveValue === 0 || moveValue === null || moveValue === undefined) {
+        // Sätt värde till 0 om ingen rörelse
+        sensor = {
+          ...sensor,
+          values: { move: 0 },
+        };
+      }
+    }
+
     // Använd inbyggd konfiguration om den finns
     const config = SENSOR_PRIORITY_CONFIG[sensor.sensor_id];
     if (config) {
@@ -211,7 +243,7 @@ export const Dashboard: React.FC = () => {
   });
 
   // Gruppera sensorer per kategori med definierad ordning
-  const categoryOrder = ['Hälsoindex', 'Luftkvalitet', 'Miljö', 'Ljud', 'Ljus', 'Övrigt'];
+  const categoryOrder = ['Hälsoindex', 'Luftkvalitet', 'Miljö', 'Ljud', 'Ljus', 'Rörelse', 'Övrigt'];
   const sensorsByCategory = sensorsWithMetadata.reduce((acc, sensor) => {
     const category = sensor.metadata?.category || 'Övrigt';
     if (!acc[category]) {
@@ -228,10 +260,16 @@ export const Dashboard: React.FC = () => {
     return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
   });
 
+  // Hämta timestamp från senaste sensor för dataålderskontroll
+  const latestTimestamp = sensors.length > 0 ? sensors[0].timestamp : undefined;
+
   return (
     <div style={{ padding: 'var(--spacing-lg)', maxWidth: '1400px', margin: '0 auto' }}>
       <ToastContainer toasts={toasts} onClose={removeToast} />
       <h1 style={{ marginBottom: 'var(--spacing-xl)' }}>Dashboard</h1>
+
+      {/* Systemdegraderings-varningar */}
+      <DegradationAlerts refreshInterval={60000} lastDataTimestamp={latestTimestamp} />
 
       {loading && sensors.length === 0 ? (
         <div>Laddar sensorvärden...</div>
@@ -258,6 +296,20 @@ export const Dashboard: React.FC = () => {
         </div>
       ) : (
         <>
+          {/* Status-kort: Närvaro och Aktivitet */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: 'var(--spacing-md)',
+              marginBottom: 'var(--spacing-lg)',
+              maxWidth: '850px',
+            }}
+          >
+            <OccupancyCard refreshInterval={15000} showDetails={true} />
+            <ActivityIndicator refreshInterval={10000} showHistory={true} />
+          </div>
+
           {/* Mjuka larm för avvikande värden */}
           <TrendAlerts sensors={sensorsWithMetadata} />
 

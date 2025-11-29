@@ -1675,11 +1675,13 @@ docker-compose up -d --build
 **Status:** ⚠️ PROBLEM
 
 **Problem:**
+
 - **Dashboard visar tomt innehåll** - När `sensors: []` returneras från API:et visas bara rubriken "Dashboard" utan något innehåll eller meddelande
 - Borde visa "Inga sensorvärden tillgängliga" eller liknande meddelande
 - **Favicon saknas** - `vite.svg` returnerar 404
 
 **Fungerar:**
+
 - Navigation och ikoner i navbar
 - API-anrop fungerar (200 OK)
 - Dark mode toggle fungerar
@@ -1689,6 +1691,7 @@ docker-compose up -d --build
 **Status:** ✅ FUNGERAR
 
 **Fungerar:**
+
 - Sidan laddas korrekt
 - Filter-dropdown fungerar (Severity, Status, Typ)
 - Tabell-layout visas korrekt
@@ -1700,18 +1703,21 @@ docker-compose up -d --build
 **Status:** ⚠️ PROBLEM MED IKONER
 
 **Problem:**
+
 - **Ikon-URL:er har dubbelt `.svg.svg`-tillägg** - Alla sensorikoner får fel URL
   - Exempel: `/icons/temperature-icon.svg.svg` istället för `/icons/temperature-icon.svg`
   - Detta orsakar 404-fel för 10 ikoner
   - Console visar varningar: `Icon "temperature-icon.svg" (temperature-icon.svg.svg) not found`
 
 **Fungerar:**
+
 - Sidan laddas korrekt
 - Kategorifilter fungerar
 - Sensorkort visas med placeholder-ikoner
 - Länkar till detaljsidor fungerar
 
 **Felande ikoner (404):**
+
 1. temperature-icon.svg.svg
 2. humidity-icon.svg.svg
 3. co2-icon.svg.svg
@@ -1728,9 +1734,11 @@ docker-compose up -d --build
 **Status:** ⚠️ PROBLEM MED IKONER
 
 **Problem:**
+
 - Samma ikon-problem som Overview-sidan (dubbelt `.svg.svg`)
 
 **Fungerar:**
+
 - Sidan laddas korrekt
 - Sensorinformation visas (beskrivning, normalvärden, varningar, FAQ)
 - Historik-graf renderas (tom då ingen data finns)
@@ -1742,6 +1750,7 @@ docker-compose up -d --build
 **Status:** ✅ FUNGERAR
 
 **Fungerar:**
+
 - Navbar-ikoner laddas korrekt (halo-icon, dashboard-icon, events-icon, sensor-info-icon, moon/sun)
 - Navigation mellan sidor fungerar
 - Dark mode toggle fungerar korrekt
@@ -1752,22 +1761,24 @@ docker-compose up -d --build
 **Status:** ⚠️ EJ TESTAT FULLSTÄNDIGT
 
 **Observationer:**
+
 - Ingen WebSocket-anslutning synlig i network requests
 - WebSocket API finns tillgängligt i browser
 - Behöver verifieras med live data
 
 ### Sammanfattning av Problem
 
-| Problem | Severity | Sida | Beskrivning |
-|---------|----------|------|-------------|
-| Tomt Dashboard | **HÖG** | Dashboard | Visar inget innehåll när `sensors: []` |
-| Dubbelt .svg-tillägg | **MEDEL** | Sensor Info | Alla sensorikoner får `.svg.svg` URL |
-| Favicon 404 | **LÅG** | Alla | `vite.svg` saknas |
-| Ingen sensordata | **INFO** | Alla | InfluxDB har ingen data (collector-problem) |
+| Problem              | Severity  | Sida        | Beskrivning                                 |
+| -------------------- | --------- | ----------- | ------------------------------------------- |
+| Tomt Dashboard       | **HÖG**   | Dashboard   | Visar inget innehåll när `sensors: []`      |
+| Dubbelt .svg-tillägg | **MEDEL** | Sensor Info | Alla sensorikoner får `.svg.svg` URL        |
+| Favicon 404          | **LÅG**   | Alla        | `vite.svg` saknas                           |
+| Ingen sensordata     | **INFO**  | Alla        | InfluxDB har ingen data (collector-problem) |
 
 ### Tekniska Detaljer
 
 **API-svar som fungerar:**
+
 - `GET /api/sensors/meta` → 200 OK (metadata för alla sensorer)
 - `GET /api/sensors/latest` → 200 OK (`{"sensors": []}`)
 - `GET /api/events` → 200 OK (tom lista)
@@ -1775,6 +1786,7 @@ docker-compose up -d --build
 - `GET /api/sensors/:id/history` → 200 OK (tom data)
 
 **Resurser som fungerar:**
+
 - `/icons/halo-icon.svg` → 200 OK
 - `/icons/dashboard-icon.svg` → 200 OK
 - `/icons/events-icon.svg` → 200 OK
@@ -1783,20 +1795,24 @@ docker-compose up -d --build
 - `/icons/sun.svg` → 200 OK
 
 **Resurser som saknas (404):**
+
 - `/vite.svg` (favicon)
 - `/icons/*.svg.svg` (alla sensor-ikoner på Sensor Info-sidorna)
 
 ### Rekommenderade Åtgärder
 
 1. **Dashboard tom-tillstånd (Prioritet: HÖG)**
+
    - Lägg till meddelande när `sensors.length === 0`
    - Visa "Inga sensorvärden tillgängliga" eller "Väntar på data..."
 
 2. **Fixa ikon-URL:er (Prioritet: MEDEL)**
+
    - Problemet är i Icon-komponenten eller sensor_metadata.json
    - Ta bort dubbelt `.svg`-tillägg
 
 3. **Lägg till favicon (Prioritet: LÅG)**
+
    - Lägg till `favicon.ico` eller uppdatera `index.html`
 
 4. **InfluxDB och Collector (Prioritet: HÖG)**

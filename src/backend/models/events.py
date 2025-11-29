@@ -8,15 +8,52 @@ from enum import Enum
 
 
 class EventType(str, Enum):
-    """Event-typer"""
+    """Event-typer - Alla Halo 3C event types plus system events"""
+    # System events
     NOISE = "NOISE"
     KNOCK = "KNOCK"
     SENSOR_THRESHOLD = "SENSOR_THRESHOLD"
     SYSTEM = "SYSTEM"
+
+    # Beacon events
     BEACON_PANIC_BUTTON = "BEACON_PANIC_BUTTON"
     BEACON_ARRIVED = "BEACON_ARRIVED"
     BEACON_DEPARTED = "BEACON_DEPARTED"
     BEACON_LOW_BATTERY = "BEACON_LOW_BATTERY"
+
+    # Grupp 1: Vaping/Smoking
+    VAPE = "Vape"
+    THC = "THC"
+    MASKING = "Masking"
+    SMOKING = "Smoking"
+
+    # Grupp 4: Säkerhet
+    GUNSHOT = "Gunshot"
+    AGGRESSION = "Aggression"
+    TAMPER = "Tamper"
+    HELP = "Help"
+    MOTION = "Motion"
+
+    # Grupp 8: Luftkvalitet
+    HEALTH_INDEX = "Health_Index"
+    AQI = "AQI"
+    TVOC = "TVOC"
+    CO2CAL = "CO2cal"
+    PM2_5 = "PM2.5"
+
+    # Grupp 16: Miljövarningar
+    PM1 = "PM1"
+    PM10 = "PM10"
+    HUMIDITY = "Humidity"
+    HUMIDITY_LOW = "Humidity_Low"
+    TEMP_C = "Temp_C"
+    TEMP_C_LOW = "Temp_C_Low"
+    NO2 = "NO2"
+    CO = "CO"
+    NH3 = "NH3"
+    PRESSURE = "Pressure"
+    LIGHT = "Light"
+    SOUND = "Sound"
 
 
 class EventSeverity(str, Enum):

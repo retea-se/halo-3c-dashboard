@@ -6,6 +6,7 @@ from datetime import datetime
 from influxdb_client import Point
 import logging
 import os
+import math
 
 from .influxdb import InfluxDBService
 
@@ -47,6 +48,22 @@ class SensorDataService:
                     # Hantera sensor-struktur
                     sensor_key = value.get('key', key)
                     data = value.get('data', {})
+
+                    # Specialhantering för accelerometer - beräkna och logga magnitud
+                    if sensor_key == 'accsensor' and isinstance(data, dict):
+                        x = data.get('x', 0)
+                        y = data.get('y', 0)
+                        z = data.get('z', 0)
+                        if isinstance(x, (int, float)) and isinstance(y, (int, float)) and isinstance(z, (int, float)):
+                            # Beräkna magnitud: sqrt(x² + y² + z²)
+                            magnitude = math.sqrt(x*x + y*y + z*z)
+                            # Logga magnitud som separat field
+                            point = Point("sensor_accsensor") \
+                                .tag("sensor_id", "accsensor/magnitude") \
+                                .tag("device_id", self.device_id) \
+                                .field("magnitude", float(magnitude)) \
+                                .time(timestamp)
+                            points.append(point)
 
                     # Skapa measurement baserat på sensor-typ
                     measurement = f"sensor_{sensor_key}"
@@ -153,3 +170,45 @@ class SensorDataService:
             logger.error(f"Failed to write beacon data: {e}", exc_info=True)
             return False
 
+    def write_heartbeat(
+        self,
+        is_connected: bool,
+        response_time_ms: Optional[float] = None,
+        error: Optional[str] = None,
+        timestamp: Optional[datetime] = None
+    ) -> bool:
+        """
+        Skriv heartbeat-status till InfluxDB för att spåra Halo-kontakt över tid.
+
+        Args:
+            is_connected: True om Halo svarade, False om timeout/error
+            response_time_ms: Responstid i millisekunder (om connected)
+            error: Felmeddelande om disconnected
+            timestamp: Timestamp för data (default: nu)
+
+        Returns:
+            True om framgångsrikt
+        """
+        if timestamp is None:
+            timestamp = datetime.utcnow()
+
+        try:
+            point = Point("halo_heartbeat") \
+                .tag("device_id", self.device_id) \
+                .tag("sensor_id", "heartbeat/status") \
+                .field("connected", 1.0 if is_connected else 0.0) \
+                .time(timestamp)
+
+            if response_time_ms is not None:
+                point = point.field("response_time_ms", float(response_time_ms))
+
+            if error:
+                point = point.tag("error", error[:100])  # Begränsa error-längd
+
+            self.influxdb.write_api.write(bucket=self.bucket, record=point)
+            logger.debug(f"Wrote heartbeat: connected={is_connected}, response_time={response_time_ms}ms")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to write heartbeat: {e}", exc_info=True)
+            return False

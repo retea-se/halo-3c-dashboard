@@ -1,39 +1,107 @@
 """
-System routes - health checks och systemstatus
+System routes - health checks, systemstatus och enhetsinformation
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 import logging
 import os
+from datetime import datetime
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# In-memory heartbeat storage (uppdateras av collector via API)
+_heartbeat_data = {
+    "last_contact": None,
+    "status": "unknown",
+    "error": None
+}
+
+
+def get_halo_client():
+    """Skapa HaloClient instans"""
+    from collector.halo_client import HaloClient
+
+    halo_ip = os.getenv("HALO_IP", "REDACTED_HALO_IP")
+    halo_user = os.getenv("HALO_USER", "admin")
+    halo_pass = os.getenv("HALO_PASS", "")
+
+    if not halo_pass:
+        return None
+
+    return HaloClient(
+        ip=halo_ip,
+        username=halo_user,
+        password=halo_pass
+    )
+
+
+@router.get("/heartbeat")
+async def get_heartbeat():
+    """
+    Hämta Halo sensor heartbeat-status
+
+    Returns:
+        Heartbeat-status med senaste kontakttid
+    """
+    try:
+        from collector.halo_client import get_heartbeat_status
+        return get_heartbeat_status()
+    except ImportError:
+        # Fallback om collector inte är tillgänglig
+        return _heartbeat_data
+
+
+@router.post("/heartbeat")
+async def update_heartbeat(status: str = "healthy", error: Optional[str] = None):
+    """
+    Uppdatera heartbeat-status (anropas av collector)
+
+    Args:
+        status: Status (healthy, degraded, offline)
+        error: Eventuellt felmeddelande
+    """
+    global _heartbeat_data
+    _heartbeat_data = {
+        "last_contact": datetime.utcnow().isoformat(),
+        "status": status,
+        "error": error
+    }
+    return {"success": True}
+
+
 @router.get("/status")
 async def get_system_status():
     """
-    Hämta systemstatus för alla komponenter
+    Hamta systemstatus for alla komponenter
 
     Returns:
-        Status för backend, InfluxDB, Collector, Halo sensor
+        Status for backend, InfluxDB, Collector, Halo sensor, Heartbeat
     """
     status = {
         "backend": "healthy",
         "influxdb": {"status": "unknown"},
         "collector": {"status": "unknown"},
         "halo_sensor": {"status": "unknown"},
+        "heartbeat": {"status": "unknown"},
         "timestamp": None
     }
+
+    # Hämta heartbeat-status
+    try:
+        from collector.halo_client import get_heartbeat_status
+        status["heartbeat"] = get_heartbeat_status()
+    except ImportError:
+        status["heartbeat"] = _heartbeat_data
 
     # Test InfluxDB connection
     try:
         from services.influxdb import InfluxDBService
         influxdb = InfluxDBService()
 
-        # Försök hämta buckets för att testa anslutning
         try:
             buckets_api = influxdb.client.buckets_api()
-            # Lista buckets (enkel test av anslutning)
             buckets = buckets_api.find_buckets()
             status["influxdb"] = {
                 "status": "connected",
@@ -56,17 +124,10 @@ async def get_system_status():
 
     # Test Halo sensor connection
     try:
-        from collector.halo_client import HaloClient
+        halo_client = get_halo_client()
         halo_ip = os.getenv("HALO_IP", "REDACTED_HALO_IP")
-        halo_user = os.getenv("HALO_USER", "admin")
-        halo_pass = os.getenv("HALO_PASS", "")
 
-        if halo_pass:
-            halo_client = HaloClient(
-                ip=halo_ip,
-                username=halo_user,
-                password=halo_pass
-            )
+        if halo_client:
             if halo_client.health_check():
                 status["halo_sensor"] = {
                     "status": "connected",
@@ -89,14 +150,137 @@ async def get_system_status():
             "error": str(e)
         }
 
-    # Collector status (kanske kolla via Docker API eller log files)
-    # För nu säger vi unknown
     status["collector"] = {
         "status": "unknown",
         "note": "Check collector logs for detailed status"
     }
 
-    from datetime import datetime
     status["timestamp"] = datetime.utcnow().isoformat()
 
     return status
+
+
+@router.get("/device/info")
+async def get_device_info():
+    """
+    Hamta detaljerad enhetsinformation fran Halo 3C
+
+    Returns:
+        Enhetsinformation inkl. drifttimmar, natverksinfo, etc.
+    """
+    try:
+        halo_client = get_halo_client()
+
+        if not halo_client:
+            raise HTTPException(
+                status_code=503,
+                detail="Halo sensor not configured. Set HALO_PASS environment variable."
+            )
+
+        info = halo_client.get_device_info()
+
+        if info is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not connect to Halo sensor"
+            )
+
+        # Formatera drifttid om tillgangligt
+        if info.get("lifetime_hours"):
+            hours = info["lifetime_hours"]
+            days = hours // 24
+            remaining_hours = hours % 24
+            info["lifetime_formatted"] = f"{days} dagar, {remaining_hours} timmar"
+
+        # Formatera starttid om tillgangligt
+        if info.get("start_time"):
+            try:
+                start_ts = info["start_time"]
+                if isinstance(start_ts, (int, float)):
+                    start_dt = datetime.fromtimestamp(start_ts)
+                    info["start_time_formatted"] = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                pass
+
+        return info
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get device info: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/device/raw")
+async def get_device_raw_state():
+    """
+    Hamta ra sensordata fran Halo 3C (JSON)
+
+    Returns:
+        Ra JSON-data fran Halo API
+    """
+    try:
+        halo_client = get_halo_client()
+
+        if not halo_client:
+            raise HTTPException(
+                status_code=503,
+                detail="Halo sensor not configured. Set HALO_PASS environment variable."
+            )
+
+        raw_state = halo_client.get_raw_state()
+
+        if raw_state is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not connect to Halo sensor"
+            )
+
+        return {
+            "state": raw_state,
+            "fetched_at": datetime.utcnow().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get raw state: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/device/network")
+async def get_device_network_info():
+    """
+    Hamta natverksinformation fran Halo 3C
+
+    Returns:
+        Natverksinfo (IP, MAC, etc.)
+    """
+    try:
+        halo_client = get_halo_client()
+
+        if not halo_client:
+            raise HTTPException(
+                status_code=503,
+                detail="Halo sensor not configured"
+            )
+
+        info = halo_client.get_device_info()
+
+        if info is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not connect to Halo sensor"
+            )
+
+        return {
+            "ip": info.get("ip"),
+            "network": info.get("network", {}),
+            "fetched_at": info.get("fetched_at")
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get network info: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

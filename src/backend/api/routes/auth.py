@@ -16,8 +16,8 @@ router = APIRouter()
 security_basic = HTTPBasic()
 
 # Demo-konto credentials från miljövariabler
-DEMO_USERNAME = os.getenv("DEMO_USERNAME", "admin")
-DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "admin")
+DEMO_USERNAME = os.getenv("DEMO_USERNAME", "demo")
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "TeknikLokaler2025!")
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 
 # Validera att demo-lösenordet är säkert i produktion

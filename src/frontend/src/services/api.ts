@@ -1,25 +1,14 @@
 /**
  * API Service - Anrop till backend API
- * Använder runtime-konfiguration via window.location för produktion
+ * Anvander runtime-konfiguration via window.location for produktion
  */
+
+const TOKEN_KEY = 'tekniklokaler_auth_token';
+
 const getApiBaseUrl = (): string => {
-  // Runtime-konfiguration: bestäm API-URL baserat på aktuell host
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-
-    // Om vi är i produktion (inte localhost), använd relativa URL:er
-    // så att nginx kan proxya till backend
-    if (host !== 'localhost' && host !== '127.0.0.1') {
-      // Produktion med nginx proxy: använd relativa URL:er
-      // Nginx proxar /api/ till backend:8000
-      return '';
-    }
-
-    // Utveckling på localhost: använd port 8000 för backend
-    return 'http://localhost:8000';
-  }
-
-  // Fallback för server-side rendering (används inte i SPA)
+  // Anvand alltid relativa URL:er - bade i utveckling (Vite proxy) och produktion (nginx proxy)
+  // Vite proxy: /api -> http://REDACTED_SERVER_IP:8000
+  // Nginx proxy: /api -> http://backend:8000
   return '';
 };
 
@@ -32,14 +21,31 @@ class ApiService {
     this.baseUrl = API_BASE_URL;
   }
 
+  private getAuthHeader(): Record<string, string> {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      return { 'Authorization': `Bearer ${token}` };
+    }
+    return {};
+  }
+
   private async fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...this.getAuthHeader(),
         ...options?.headers,
       },
     });
+
+    // Hantera 401 Unauthorized - logga ut anvandaren
+    if (response.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('tekniklokaler_auth_user');
+      window.location.reload();
+      throw new Error('Session expired');
+    }
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
@@ -142,6 +148,94 @@ class ApiService {
 
     return this.fetchJson(`/api/sensors/history?${params.toString()}`);
   }
+
+  // Occupancy endpoints
+  async getOccupancyStatus(deviceId?: string): Promise<OccupancyStatus> {
+    const params = new URLSearchParams();
+    if (deviceId) params.append('device_id', deviceId);
+    params.append('include_details', 'true');
+    return this.fetchJson(`/api/occupancy/status?${params.toString()}`);
+  }
+
+  async getOccupancyHistory(deviceId?: string, hours: number = 24): Promise<OccupancyHistory> {
+    const params = new URLSearchParams();
+    if (deviceId) params.append('device_id', deviceId);
+    params.append('hours', hours.toString());
+    return this.fetchJson(`/api/occupancy/history?${params.toString()}`);
+  }
+
+  async getOccupancyConfig(): Promise<OccupancyConfig> {
+    return this.fetchJson('/api/occupancy/config');
+  }
+}
+
+// Types for Occupancy
+export interface OccupancyStatus {
+  state: 'occupied' | 'vacant' | 'uncertain';
+  occupied: boolean;
+  score: number;
+  threshold: number;
+  confidence: 'high' | 'medium' | 'low';
+  timestamp: string;
+  device_id: string;
+  details?: {
+    co2: {
+      value: number | null;
+      unit: string;
+      contribution: number;
+      thresholds: { high: number; medium: number; baseline: number };
+    };
+    audio: {
+      value: number | null;
+      unit: string;
+      contribution: number;
+      thresholds: { high: number; medium: number; baseline: number };
+    };
+    beacon: {
+      present: boolean;
+      count: number;
+      contribution: number;
+    };
+  };
+  score_breakdown?: {
+    co2: number;
+    audio: number;
+    beacon: number;
+  };
+  error?: string;
+}
+
+export interface OccupancyHistory {
+  device_id: string;
+  period_hours: number;
+  history: Array<{
+    timestamp: string;
+    state: string;
+    score: number;
+  }>;
+  statistics: {
+    occupied_percentage: number;
+    sample_count: number;
+    last_change: string | null;
+  };
+}
+
+export interface OccupancyConfig {
+  thresholds: {
+    co2: { high: number; medium: number; baseline: number; unit: string };
+    audio: { high: number; medium: number; baseline: number; unit: string };
+  };
+  scoring: {
+    co2_high: number;
+    co2_medium: number;
+    audio_high: number;
+    audio_medium: number;
+    beacon_present: number;
+  };
+  state_thresholds: {
+    occupied: number;
+    vacant: number;
+  };
 }
 
 export const apiService = new ApiService();

@@ -79,7 +79,7 @@ def main():
         beacon_handler = BeaconHandler()
         logger.info("Beacon handler initialized")
 
-        event_generator = EventGenerator()
+        event_generator = EventGenerator(halo_client=halo_client)
         logger.info("Event generator initialized")
 
         sensor_data_service = SensorDataService()
@@ -120,16 +120,33 @@ def main():
                 continue
 
             try:
-                # Hämta sensor-data från Halo
+                # Hämta sensor-data från Halo och mät responstid
                 logger.debug(f"Fetching sensor data from Halo...")
+                fetch_start = time.time()
                 halo_state = halo_client.get_latest_state()
+                fetch_time_ms = (time.time() - fetch_start) * 1000
 
+                timestamp = datetime.utcnow()
+
+                # Logga heartbeat till InfluxDB
                 if halo_state is None:
+                    # Halo ej nåbar
+                    from collector.halo_client import _last_contact_error
+                    sensor_data_service.write_heartbeat(
+                        is_connected=False,
+                        error=_last_contact_error,
+                        timestamp=timestamp
+                    )
                     logger.warning("Failed to fetch Halo state, retrying next cycle")
                     last_collection_time = time.time()
                     continue
-
-                timestamp = datetime.utcnow()
+                else:
+                    # Halo nåbar - logga med responstid
+                    sensor_data_service.write_heartbeat(
+                        is_connected=True,
+                        response_time_ms=fetch_time_ms,
+                        timestamp=timestamp
+                    )
 
                 # Skriv sensor-data till InfluxDB
                 logger.debug("Writing sensor data to InfluxDB...")

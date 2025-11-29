@@ -9,6 +9,46 @@ import { apiService } from '../services/api';
 import { SensorGraph } from '../components/sensors/SensorGraph';
 import { useTheme } from '../theme/ThemeProvider';
 
+// Tidsintervall för historik
+const TIME_RANGES = [
+  { label: '1 timme', hours: 1 },
+  { label: '6 timmar', hours: 6 },
+  { label: '24 timmar', hours: 24 },
+  { label: '7 dagar', hours: 168 },
+  { label: '1 månad', hours: 720 },
+  { label: '6 månader', hours: 4320 },
+  { label: '12 månader', hours: 8640 },
+];
+
+const TimeRangeSelector: React.FC<{ onRangeChange: (hours: number) => void }> = ({ onRangeChange }) => {
+  const [selectedRange, setSelectedRange] = useState(24);
+
+  return (
+    <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+      {TIME_RANGES.map((range) => (
+        <button
+          key={range.hours}
+          onClick={() => {
+            setSelectedRange(range.hours);
+            onRangeChange(range.hours);
+          }}
+          style={{
+            padding: 'var(--spacing-xs) var(--spacing-sm)',
+            border: `1px solid ${selectedRange === range.hours ? 'var(--color-primary)' : 'var(--color-border)'}`,
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: selectedRange === range.hours ? 'var(--color-primary)' : 'transparent',
+            color: selectedRange === range.hours ? 'white' : 'var(--color-text-secondary)',
+            cursor: 'pointer',
+            fontSize: 'var(--font-size-sm)',
+          }}
+        >
+          {range.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 interface SensorMetadata {
   id: string;
   technical_name: string;
@@ -47,22 +87,35 @@ export const SensorInfoDetail: React.FC = () => {
   const [sensor, setSensor] = useState<SensorMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [historyData, setHistoryData] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [timeRange, setTimeRange] = useState(24);
   const { colors } = useTheme();
 
   useEffect(() => {
     const loadSensor = async () => {
       if (!sensorId) return;
 
+      // Avkoda URL-encoded sensor ID
+      const decodedSensorId = decodeURIComponent(sensorId);
+
       try {
         setLoading(true);
-        const metadata = await apiService.getSensorMetadataById(sensorId);
+        const metadata = await apiService.getSensorMetadataById(decodedSensorId);
         setSensor(metadata);
 
-        // Ladda historik (senaste 24 timmarna)
+        // Ladda historik och events
+        // Anvand technical_name for historik-queryn om tillgangligt
+        const historyId = metadata?.technical_name || decodedSensorId;
         const toTime = new Date().toISOString();
-        const fromTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const history = await apiService.getSensorHistory(sensorId, fromTime, toTime, 500);
+        const fromTime = new Date(Date.now() - timeRange * 60 * 60 * 1000).toISOString();
+
+        const [history, eventsData] = await Promise.all([
+          apiService.getSensorHistory(historyId, fromTime, toTime, 1000),
+          apiService.getEvents({ from: fromTime, to: toTime }),
+        ]);
+
         setHistoryData(history || []);
+        setEvents(eventsData || []);
       } catch (error) {
         console.error('Failed to load sensor:', error);
       } finally {
@@ -71,7 +124,7 @@ export const SensorInfoDetail: React.FC = () => {
     };
 
     loadSensor();
-  }, [sensorId]);
+  }, [sensorId, timeRange]);
 
   if (loading) {
     return (
@@ -209,15 +262,32 @@ export const SensorInfoDetail: React.FC = () => {
         {/* Höger kolumn - Graf */}
         <div>
           <Card padding="md">
-            <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-              Historik (24 timmar)
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, margin: 0 }}>
+                Historik
+              </h3>
+              <TimeRangeSelector onRangeChange={async (hours) => {
+                setTimeRange(hours);
+                const historyId = sensor?.technical_name || sensorId;
+                const toTime = new Date().toISOString();
+                const fromTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+                const [history, eventsData] = await Promise.all([
+                  apiService.getSensorHistory(historyId, fromTime, toTime, 1000),
+                  apiService.getEvents({ from: fromTime, to: toTime }),
+                ]);
+
+                setHistoryData(history || []);
+                setEvents(eventsData || []);
+              }} />
+            </div>
             <SensorGraph
               sensorId={sensor.id}
               data={historyData}
               metadata={sensor}
               unit={sensor.unit}
               graphLevels={sensor.graph_levels}
+              events={events}
             />
           </Card>
         </div>
