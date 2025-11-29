@@ -137,10 +137,13 @@ class EventService:
             Lista med events
         """
         try:
-            # Bygg Flux query
+            # Bygg Flux query med pivot för att samla alla fields
+            start_time = self._datetime_to_flux_time(from_time or (datetime.utcnow() - timedelta(hours=24)))
+            stop_time = self._datetime_to_flux_time(to_time or datetime.utcnow())
+
             query = f'''
             from(bucket: "{self.bucket}")
-              |> range(start: {self._datetime_to_flux_time(from_time or (datetime.utcnow() - timedelta(hours=24)))}, stop: {self._datetime_to_flux_time(to_time or datetime.utcnow())})
+              |> range(start: {start_time}, stop: {stop_time})
               |> filter(fn: (r) => r["_measurement"] == "events")
             '''
 
@@ -154,6 +157,11 @@ class EventService:
             if device_id:
                 query += f'|> filter(fn: (r) => r["device_id"] == "{device_id}")'
 
+            # Pivot för att samla alla fields till en rad per event
+            query += '''
+              |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+              |> sort(columns: ["_time"], desc: true)
+            '''
             query += f'|> limit(n: {limit})'
 
             # Kör query
@@ -161,59 +169,44 @@ class EventService:
 
             # Konvertera till Event-objekt
             events = []
-            event_dicts = {}
 
             for table in result:
                 for record in table.records:
+                    # Efter pivot har vi alla fields i samma record
                     event_id = record.values.get('event_id')
                     if not event_id:
                         continue
 
-                    if event_id not in event_dicts:
-                        event_dicts[event_id] = {
-                            'id': event_id,
-                            'timestamp': record.get_time(),
-                            'type': record.values.get('type'),
-                            'severity': record.values.get('severity'),
-                            'status': record.values.get('status'),
-                            'source': record.values.get('source', 'unknown'),
-                            'device_id': record.values.get('device_id', 'halo-device-1'),
-                            'location': record.values.get('location'),
-                            'sensor_metadata_id': record.values.get('sensor_metadata_id'),
-                            'details': {},
-                            'summary': '',
-                            'threshold_value': None,
-                            'current_value': None
-                        }
+                    # Extrahera details och parsea JSON
+                    details_str = record.values.get('details', '{}')
+                    try:
+                        details = json.loads(details_str) if isinstance(details_str, str) else (details_str or {})
+                    except:
+                        details = {}
 
-                    # Lägg till field-värden
-                    field = record.get_field()
-                    value = record.get_value()
+                    event_dict = {
+                        'id': event_id,
+                        'timestamp': record.get_time(),
+                        'type': record.values.get('type'),
+                        'severity': record.values.get('severity'),
+                        'status': record.values.get('status'),
+                        'source': record.values.get('source', 'unknown'),
+                        'device_id': record.values.get('device_id', 'halo-device-1'),
+                        'location': record.values.get('location'),
+                        'sensor_metadata_id': record.values.get('sensor_metadata_id'),
+                        'details': details,
+                        'summary': record.values.get('summary', ''),
+                        'threshold_value': record.values.get('threshold_value'),
+                        'current_value': record.values.get('current_value')
+                    }
 
-                    if field == 'summary':
-                        event_dicts[event_id]['summary'] = value
-                    elif field == 'details':
-                        try:
-                            event_dicts[event_id]['details'] = json.loads(value) if isinstance(value, str) else value
-                        except:
-                            event_dicts[event_id]['details'] = {}
-                    elif field == 'threshold_value':
-                        event_dicts[event_id]['threshold_value'] = value
-                    elif field == 'current_value':
-                        event_dicts[event_id]['current_value'] = value
+                    try:
+                        event = Event(**event_dict)
+                        events.append(event)
+                    except Exception as e:
+                        logger.warning(f"Failed to create event from dict: {e}")
 
-            # Skapa Event-objekt
-            for event_dict in event_dicts.values():
-                try:
-                    event = Event(**event_dict)
-                    events.append(event)
-                except Exception as e:
-                    logger.warning(f"Failed to create event from dict: {e}")
-
-            # Sortera efter timestamp (nyaste först)
-            events.sort(key=lambda e: e.timestamp, reverse=True)
-
-            return events[:limit]
+            return events
 
         except Exception as e:
             logger.error(f"Failed to get events: {e}", exc_info=True)
