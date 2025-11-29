@@ -117,47 +117,8 @@ export const SensorCompare: React.FC = () => {
           }
         });
 
-        // Generera färg baserat på sensor-typ för nya sensorer
-        const getColor = (sensorId: string) => {
-          if (sensorId.includes('temp')) return '#ef4444';
-          if (sensorId.includes('humidity')) return '#3b82f6';
-          if (sensorId.includes('co2')) return '#f59e0b';
-          if (sensorId.includes('tvoc')) return '#8b5cf6';
-          if (sensorId.includes('pm')) return '#10b981';
-          if (sensorId.includes('gas')) return '#dc2626';
-          if (sensorId.includes('aud')) return '#ec4899';
-          if (sensorId.includes('lux')) return '#f97316';
-          if (sensorId.includes('AQI') || sensorId.includes('Health')) return '#6366f1';
-          if (sensorId.includes('pir') || sensorId.includes('acc')) return '#22c55e';
-          if (sensorId.includes('heartbeat')) return '#ef4444';
-          return '#6b7280';
-        };
-
-        // Lägg till live-sensorer som INTE finns i fallback
-        sensors
-          .filter((s: any) => {
-            const value = Object.values(s.values || {})[0];
-            return value !== undefined && value !== null && typeof value === 'number' && value < 1000000000000;
-          })
-          .forEach((s: any) => {
-            if (!sensorMap.has(s.sensor_id)) {
-              // Hitta metadata för denna sensor
-              const meta = metadata.find((m: any) => {
-                const techName = m.technical_name || '';
-                return techName === s.sensor_id || s.sensor_id === techName;
-              });
-
-              const displayName = meta?.display_name || s.sensor_id;
-              const unit = meta?.unit || '';
-
-              activeSensors.set(s.sensor_id, {
-                id: s.sensor_id,
-                name: displayName,
-                unit: unit,
-                color: getColor(s.sensor_id),
-              });
-            }
-          });
+        // Vi visar ENDAST sensorer från FALLBACK_SENSORS som har aktiv data
+        // Detta undviker att visa hundratals råa sensorer från API:et
 
         // Konvertera Map till array och sortera alfabetiskt
         const uniqueSensors = Array.from(activeSensors.values()).sort((a, b) =>
