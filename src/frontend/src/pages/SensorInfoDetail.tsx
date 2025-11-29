@@ -268,7 +268,7 @@ export const SensorInfoDetail: React.FC = () => {
               </h3>
               <TimeRangeSelector onRangeChange={async (hours) => {
                 setTimeRange(hours);
-                const historyId = sensor?.technical_name || sensorId;
+                const historyId = sensor?.technical_name || sensorId || '';
                 const toTime = new Date().toISOString();
                 const fromTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 

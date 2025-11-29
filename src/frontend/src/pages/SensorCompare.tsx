@@ -91,7 +91,7 @@ export const SensorCompare: React.FC = () => {
         const sensorsWithData = sensors
           .filter((s: any) => {
             const value = Object.values(s.values || {})[0];
-            return value !== undefined && value !== null && value < 1000000000000;
+            return value !== undefined && value !== null && typeof value === 'number' && value < 1000000000000;
           })
           .map((s: any) => {
             // Hitta metadata för denna sensor

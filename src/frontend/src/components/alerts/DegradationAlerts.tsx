@@ -4,7 +4,6 @@
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '../ui/Card';
-import { apiService } from '../../services/api';
 
 interface HeartbeatStatus {
   status: string;

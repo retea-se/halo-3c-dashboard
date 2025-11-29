@@ -181,7 +181,7 @@ export const HeartbeatIndicator: React.FC<HeartbeatIndicatorProps> = ({
             {getStatusLabel(status)}
           </span>
         </div>
-        {showDetails && heartbeat?.seconds_since_contact !== null && (
+        {showDetails && heartbeat && heartbeat.seconds_since_contact !== null && (
           <div
             style={{
               fontSize: 'var(--font-size-xs)',
