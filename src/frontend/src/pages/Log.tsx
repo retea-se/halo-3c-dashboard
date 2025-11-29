@@ -30,7 +30,7 @@ const PAGE_SIZES = [25, 50, 75, 100, 250, 'Alla'] as const;
 type PageSize = typeof PAGE_SIZES[number];
 
 export const Log: React.FC = () => {
-  const { colors } = useTheme();
+  useTheme(); // Hook for theme context (colors used via CSS variables)
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMeasurement, setSelectedMeasurement] = useState<string>('all');
