@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { path: '/sensors/compare', label: 'Grafer', icon: 'graph-icon' },
   { path: '/beacons', label: 'Beacons', icon: 'beacon-icon' },
   { path: '/events', label: 'Events', icon: 'events-icon' },
+  { path: '/log', label: 'Logg', icon: 'log-icon' },
   { path: '/sensors/info', label: 'Sensor Info', icon: 'sensor-info-icon' },
   { path: '/device', label: 'Enhet', icon: 'device-icon' },
   { path: '/docs', label: 'Docs', icon: 'docs-icon' },

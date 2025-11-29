@@ -16,6 +16,7 @@ import { SensorCompare } from './pages/SensorCompare';
 import { BeaconManagement } from './pages/BeaconManagement';
 import { DeviceInfo } from './pages/DeviceInfo';
 import { Documentation } from './pages/Documentation';
+import { Log } from './pages/Log';
 import { Login } from './pages/Login';
 
 /**
@@ -93,6 +94,11 @@ const AppContent: React.FC = () => {
           <Route path="/docs" element={
             <ProtectedRoute>
               <Documentation />
+            </ProtectedRoute>
+          } />
+          <Route path="/log" element={
+            <ProtectedRoute>
+              <Log />
             </ProtectedRoute>
           } />
         </Routes>

@@ -100,6 +100,32 @@ class ApiService {
     return this.fetchJson(`/api/beacons/${beaconId}/alerts?${params.toString()}`);
   }
 
+  // Log endpoints
+  async getLogData(
+    measurement?: string,
+    hours?: number,
+    limit?: number
+  ): Promise<{
+    data: Array<{
+      timestamp: string;
+      measurement: string;
+      id: string;
+      value: any;
+      tags: Record<string, any>;
+      fields: Record<string, any>;
+    }>;
+    total: number;
+    measurement: string;
+    hours: number;
+  }> {
+    const params = new URLSearchParams();
+    if (measurement) params.append('measurement', measurement);
+    if (hours) params.append('hours', hours.toString());
+    if (limit) params.append('limit', limit.toString());
+
+    return this.fetchJson(`/api/log?${params.toString()}`);
+  }
+
   async getCurrentPresence(): Promise<any[]> {
     return this.fetchJson('/api/beacons/presence/current');
   }

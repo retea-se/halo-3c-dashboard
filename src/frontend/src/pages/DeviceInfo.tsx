@@ -19,10 +19,16 @@ interface DeviceInfoData {
     dns1?: string;
     dns2?: string;
     dhcp?: boolean;
+    eth0?: { ip?: string; router?: string; dns?: string };
+    wlan0?: { wifion?: boolean; ssid?: string; ip?: string };
   };
   cloud?: {
     connected?: boolean;
     server?: string;
+    hadcloud?: boolean;
+    domain?: string;
+    state?: string;
+    alertsOn?: boolean;
   };
   about?: {
     serial?: string;
@@ -34,13 +40,12 @@ interface DeviceInfoData {
   workers?: {
     lifetimehrs?: number;
     starttime?: number;
+    go?: number;
+    throttled?: number;
+    checkfiles?: string;
     [key: string]: unknown;
   };
-  time_info?: {
-    timezone?: string;
-    ntp_server?: string;
-    [key: string]: unknown;
-  };
+  time_info?: string;
   fetched_at?: string;
 }
 
@@ -49,6 +54,12 @@ interface SystemStatus {
   influxdb: { status: string; url?: string; org?: string; bucket?: string; error?: string };
   halo_sensor: { status: string; ip?: string; error?: string };
   collector: { status: string; note?: string };
+  heartbeat?: {
+    status: string;
+    last_contact?: string;
+    seconds_since_contact?: number;
+    error?: string | null;
+  };
   timestamp: string;
 }
 
@@ -268,9 +279,47 @@ export const DeviceInfo: React.FC = () => {
             </div>
             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>
               <div>Hämtar sensordata från Halo och lagrar i InfluxDB</div>
-              {systemStatus?.collector?.note && (
-                <div style={{ marginTop: 'var(--spacing-xs)', fontStyle: 'italic' }}>
-                  {systemStatus.collector.note}
+              {deviceInfo?.workers?.go !== undefined && (
+                <div style={{ marginTop: 'var(--spacing-xs)' }}>
+                  <span>Status: </span>
+                  <span style={{ color: deviceInfo.workers.go === 1 ? '#166534' : '#991b1b' }}>
+                    {deviceInfo.workers.go === 1 ? 'Aktiv' : 'Stoppad'}
+                  </span>
+                </div>
+              )}
+              {deviceInfo?.workers?.checkfiles && (
+                <div style={{ marginTop: 'var(--spacing-xs)' }}>
+                  <span>Filer: </span>
+                  <span style={{ fontFamily: 'monospace' }}>{deviceInfo.workers.checkfiles.trim()}</span>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Heartbeat */}
+          <Card padding="md">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-sm)' }}>
+              <strong>Heartbeat</strong>
+              <StatusBadge status={systemStatus?.heartbeat?.status || 'unknown'} />
+            </div>
+            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>
+              <div>Sensokövervakning via polling</div>
+              {systemStatus?.heartbeat?.seconds_since_contact !== undefined && (
+                <div style={{ marginTop: 'var(--spacing-xs)' }}>
+                  <span>Senaste kontakt: </span>
+                  <span style={{ fontFamily: 'monospace' }}>
+                    {systemStatus.heartbeat.seconds_since_contact < 60
+                      ? `${systemStatus.heartbeat.seconds_since_contact}s sedan`
+                      : `${Math.floor(systemStatus.heartbeat.seconds_since_contact / 60)}m sedan`}
+                  </span>
+                </div>
+              )}
+              {systemStatus?.heartbeat?.last_contact && (
+                <div style={{ marginTop: 'var(--spacing-xs)' }}>
+                  <span>Tid: </span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '10px' }}>
+                    {new Date(systemStatus.heartbeat.last_contact).toLocaleString('sv-SE')}
+                  </span>
                 </div>
               )}
             </div>
@@ -335,6 +384,12 @@ export const DeviceInfo: React.FC = () => {
                     <span style={{ fontFamily: 'monospace' }}>{String(deviceInfo.about.hardware)}</span>
                   </div>
                 )}
+                {/* Visa sensorserienummer från about-objektet */}
+                {deviceInfo.about && Object.keys(deviceInfo.about).filter(k => k.includes('sensor') || k.includes('Sensor')).map((key) => (
+                  <div key={key} style={{ marginBottom: 'var(--spacing-xs)', fontSize: 'var(--font-size-xs)' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>{key.replace(' ser#', ': ')}</span>
+                  </div>
+                ))}
                 {deviceInfo.ip && (
                   <div style={{ marginTop: 'var(--spacing-sm)' }}>
                     <a
@@ -343,9 +398,59 @@ export const DeviceInfo: React.FC = () => {
                       rel="noopener noreferrer"
                       style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontSize: 'var(--font-size-xs)' }}
                     >
-                      Öppna webbgränssnitt →
+                      Öppna webbgränssnitt
                     </a>
                   </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Tid & Synkronisering */}
+            <Card padding="md">
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-sm)' }}>
+                Tid & Synkronisering
+              </h3>
+              <div style={{ fontSize: 'var(--font-size-sm)' }}>
+                {deviceInfo.time_info ? (
+                  <>
+                    {deviceInfo.time_info.includes('Time zone:') && (
+                      <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>Tidszon: </span>
+                        <span>{deviceInfo.time_info.match(/Time zone: ([^\n]+)/)?.[1] || '-'}</span>
+                      </div>
+                    )}
+                    {deviceInfo.time_info.includes('synchronized:') && (
+                      <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>Synkroniserad: </span>
+                        <span style={{
+                          color: deviceInfo.time_info.includes('synchronized: yes') ? '#166534' : '#991b1b',
+                          fontWeight: 500
+                        }}>
+                          {deviceInfo.time_info.includes('synchronized: yes') ? 'Ja' : 'Nej'}
+                        </span>
+                      </div>
+                    )}
+                    {deviceInfo.time_info.includes('NTP service:') && (
+                      <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>NTP: </span>
+                        <span style={{
+                          color: deviceInfo.time_info.includes('NTP service: active') ? '#166534' : '#991b1b'
+                        }}>
+                          {deviceInfo.time_info.includes('NTP service: active') ? 'Aktiv' : 'Inaktiv'}
+                        </span>
+                      </div>
+                    )}
+                    {deviceInfo.time_info.includes('NTP=') && (
+                      <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>NTP-server: </span>
+                        <span style={{ fontFamily: 'monospace' }}>
+                          {deviceInfo.time_info.match(/NTP=([^\n]+)/)?.[1] || '-'}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ color: 'var(--color-text-secondary)' }}>Ingen tidsinfo tillgänglig</div>
                 )}
               </div>
             </Card>
@@ -396,8 +501,31 @@ export const DeviceInfo: React.FC = () => {
                 <div style={{ fontSize: 'var(--font-size-sm)' }}>
                   <div style={{ marginBottom: 'var(--spacing-xs)' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Status: </span>
-                    <StatusBadge status={deviceInfo.cloud.connected ? 'connected' : 'disconnected'} />
+                    <StatusBadge status={
+                      deviceInfo.cloud.state === 'Connected' ? 'connected' :
+                      deviceInfo.cloud.connected ? 'connected' : 'disconnected'
+                    } />
                   </div>
+                  {deviceInfo.cloud.state && (
+                    <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>Tillstånd: </span>
+                      <span>{deviceInfo.cloud.state}</span>
+                    </div>
+                  )}
+                  {deviceInfo.cloud.domain && (
+                    <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>Domän: </span>
+                      <span>{deviceInfo.cloud.domain}</span>
+                    </div>
+                  )}
+                  {deviceInfo.cloud.alertsOn !== undefined && (
+                    <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>Larm: </span>
+                      <span style={{ color: deviceInfo.cloud.alertsOn ? '#166534' : '#991b1b' }}>
+                        {deviceInfo.cloud.alertsOn ? 'Aktiverat' : 'Avaktiverat'}
+                      </span>
+                    </div>
+                  )}
                   {deviceInfo.cloud.server && (
                     <div style={{ marginTop: 'var(--spacing-xs)' }}>
                       <span style={{ color: 'var(--color-text-secondary)' }}>Server: </span>
