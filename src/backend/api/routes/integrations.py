@@ -1,13 +1,15 @@
 """
 Integrations routes - RTSP och BACnet konfiguration
 """
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict
 from datetime import datetime
 import logging
 import os
 import socket
+
+from api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -116,9 +118,13 @@ def test_port_open(ip: str, port: int, protocol: str = "TCP") -> bool:
 
 # RTSP Endpoints
 @router.get("/rtsp/config")
-async def get_rtsp_config():
+async def get_rtsp_config(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hämta RTSP-konfiguration från Halo 3C
+
+    Requires authentication.
 
     Returns:
         RTSP-konfiguration
@@ -153,9 +159,14 @@ async def get_rtsp_config():
 
 
 @router.put("/rtsp/config")
-async def update_rtsp_config(config: RTSPConfigUpdate = Body(...)):
+async def update_rtsp_config(
+    config: RTSPConfigUpdate = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     """
     Uppdatera RTSP-konfiguration på Halo 3C
+
+    Requires authentication.
 
     Args:
         config: RTSP-konfigurationsinställningar
@@ -217,9 +228,13 @@ async def update_rtsp_config(config: RTSPConfigUpdate = Body(...)):
 
 
 @router.get("/rtsp/status")
-async def get_rtsp_status():
+async def get_rtsp_status(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hämta RTSP-status (port, stream URL, etc.)
+
+    Requires authentication.
 
     Returns:
         RTSP-statusinformation
@@ -279,9 +294,13 @@ async def get_rtsp_status():
 
 # BACnet Endpoints
 @router.get("/bacnet/config")
-async def get_bacnet_config():
+async def get_bacnet_config(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hämta BACnet-konfiguration från Halo 3C
+
+    Requires authentication.
 
     Returns:
         BACnet-konfiguration
@@ -316,9 +335,14 @@ async def get_bacnet_config():
 
 
 @router.put("/bacnet/config")
-async def update_bacnet_config(config: BACnetConfigUpdate = Body(...)):
+async def update_bacnet_config(
+    config: BACnetConfigUpdate = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     """
     Uppdatera BACnet-konfiguration på Halo 3C
+
+    Requires authentication.
 
     Args:
         config: BACnet-konfigurationsinställningar
@@ -398,9 +422,13 @@ async def update_bacnet_config(config: BACnetConfigUpdate = Body(...)):
 
 
 @router.get("/bacnet/status")
-async def get_bacnet_status():
+async def get_bacnet_status(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hämta BACnet-status (port, connection info, etc.)
+
+    Requires authentication.
 
     Returns:
         BACnet-statusinformation

@@ -1,11 +1,12 @@
 """
 Log routes - Rådata från InfluxDB för logg-visning
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 import logging
 
 from services.log import LogService
+from api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +27,13 @@ def get_log_service() -> LogService:
 async def get_log_data(
     measurement: Optional[str] = Query(None, description="Measurement-typ (events, sensor, beacon_presence, heartbeat, all)"),
     hours: int = Query(24, ge=1, le=168, description="Antal timmar bakåt (1-168)"),
-    limit: int = Query(1000, ge=1, le=10000, description="Max antal rader (1-10000)")
+    limit: int = Query(1000, ge=1, le=10000, description="Max antal rader (1-10000)"),
+    current_user: dict = Depends(get_current_user)
 ) -> dict:
     """
     Hämta rådata från InfluxDB för logg-visning
+
+    Requires authentication.
 
     Args:
         measurement: Measurement-typ att filtrera på

@@ -1,11 +1,13 @@
 """
 System routes - health checks, systemstatus och enhetsinformation
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 import os
 from datetime import datetime
 from typing import Optional
+
+from api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -72,9 +74,13 @@ async def update_heartbeat(status: str = "healthy", error: Optional[str] = None)
 
 
 @router.get("/status")
-async def get_system_status():
+async def get_system_status(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hamta systemstatus for alla komponenter
+
+    Requires authentication.
 
     Returns:
         Status for backend, InfluxDB, Collector, Halo sensor, Heartbeat
@@ -161,9 +167,13 @@ async def get_system_status():
 
 
 @router.get("/device/info")
-async def get_device_info():
+async def get_device_info(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hamta detaljerad enhetsinformation fran Halo 3C
+
+    Requires authentication.
 
     Returns:
         Enhetsinformation inkl. drifttimmar, natverksinfo, etc.
@@ -212,9 +222,13 @@ async def get_device_info():
 
 
 @router.get("/device/raw")
-async def get_device_raw_state():
+async def get_device_raw_state(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hamta ra sensordata fran Halo 3C (JSON)
+
+    Requires authentication.
 
     Returns:
         Ra JSON-data fran Halo API
@@ -249,9 +263,13 @@ async def get_device_raw_state():
 
 
 @router.get("/device/network")
-async def get_device_network_info():
+async def get_device_network_info(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hamta natverksinformation fran Halo 3C
+
+    Requires authentication.
 
     Returns:
         Natverksinfo (IP, MAC, etc.)
@@ -287,9 +305,13 @@ async def get_device_network_info():
 
 
 @router.get("/stats")
-async def get_system_stats():
+async def get_system_stats(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hämta systemstatistik och metadata för dashboard
+
+    Requires authentication.
 
     Returns:
         Statistik om sensorer, versioner, deployment info

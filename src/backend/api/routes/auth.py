@@ -1,10 +1,13 @@
 """
 Auth routes - Authentication endpoints
 """
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from typing import Optional
+from passlib.context import CryptContext
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import os
 import logging
 
@@ -15,17 +18,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 security_basic = HTTPBasic()
 
+# Rate limiter - 5 försök per minut per IP
+limiter = Limiter(key_func=get_remote_address)
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 # Demo-konto credentials från miljövariabler
 DEMO_USERNAME = os.getenv("DEMO_USERNAME", "demo")
-DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "TeknikLokaler2025!")
-DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD")  # Inget default-värde längre!
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 
-# Validera att demo-lösenordet är säkert i produktion
-if not DEMO_MODE and (DEMO_PASSWORD == "admin" or len(DEMO_PASSWORD) < 16):
-    raise RuntimeError(
-        "DEMO_MODE is disabled but DEMO_PASSWORD is insecure. "
-        "Set DEMO_PASSWORD to at least 16 characters or enable DEMO_MODE=true for development."
+# Validera demo-konfiguration
+if DEMO_MODE:
+    if not DEMO_PASSWORD:
+        raise RuntimeError(
+            "🚨 DEMO_MODE is enabled but DEMO_PASSWORD is not set! "
+            "Set DEMO_PASSWORD environment variable to enable demo login."
+        )
+    if len(DEMO_PASSWORD) < 12:
+        logger.warning(
+            "⚠️  DEMO_PASSWORD is shorter than recommended (12+ characters). "
+            "Consider using a stronger password."
+        )
+    # Hasha lösenordet vid start för säker jämförelse
+    DEMO_PASSWORD_HASH = pwd_context.hash(DEMO_PASSWORD)
+    logger.warning(
+        "⚠️  DEMO MODE is enabled. This should only be used for development/testing."
     )
+else:
+    DEMO_PASSWORD_HASH = None
+    logger.info("Demo login is disabled (DEMO_MODE=false)")
 
 
 class LoginRequest(BaseModel):
@@ -40,11 +63,15 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login")
-async def login(login_data: LoginRequest):
+@limiter.limit("5/minute")
+async def login(request: Request, login_data: LoginRequest):
     """
     Login endpoint - Demo-konto autentisering
 
+    Rate limited: 5 försök per minut per IP
+
     Args:
+        request: FastAPI request (för rate limiting)
         login_data: Login credentials
 
     Returns:
@@ -52,13 +79,18 @@ async def login(login_data: LoginRequest):
     """
     # Inaktivera demo-läge om DEMO_MODE är false
     if not DEMO_MODE:
+        logger.warning(f"Login attempt blocked - demo mode disabled (IP: {get_remote_address(request)})")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Demo login is disabled in production",
         )
 
-    # Validera credentials
-    if login_data.username != DEMO_USERNAME or login_data.password != DEMO_PASSWORD:
+    # Validera credentials med säker hash-jämförelse
+    username_valid = login_data.username == DEMO_USERNAME
+    password_valid = pwd_context.verify(login_data.password, DEMO_PASSWORD_HASH) if DEMO_PASSWORD_HASH else False
+
+    if not (username_valid and password_valid):
+        logger.warning(f"Failed login attempt for user '{login_data.username}' (IP: {get_remote_address(request)})")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -68,7 +100,7 @@ async def login(login_data: LoginRequest):
     # Skapa JWT token
     access_token = create_access_token(data={"sub": login_data.username})
 
-    logger.info(f"User {login_data.username} logged in successfully")
+    logger.info(f"User {login_data.username} logged in successfully (IP: {get_remote_address(request)})")
 
     return LoginResponse(
         access_token=access_token,
@@ -78,11 +110,15 @@ async def login(login_data: LoginRequest):
 
 
 @router.post("/login/basic")
-async def login_basic(credentials: HTTPBasicCredentials = Depends(security_basic)):
+@limiter.limit("5/minute")
+async def login_basic(request: Request, credentials: HTTPBasicCredentials = Depends(security_basic)):
     """
     HTTP Basic Auth login endpoint (för enkelhet)
 
+    Rate limited: 5 försök per minut per IP
+
     Args:
+        request: FastAPI request (för rate limiting)
         credentials: HTTP Basic Auth credentials
 
     Returns:
@@ -90,13 +126,18 @@ async def login_basic(credentials: HTTPBasicCredentials = Depends(security_basic
     """
     # Inaktivera demo-läge om DEMO_MODE är false
     if not DEMO_MODE:
+        logger.warning(f"Basic auth login attempt blocked - demo mode disabled (IP: {get_remote_address(request)})")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Demo login is disabled in production",
         )
 
-    # Validera credentials
-    if credentials.username != DEMO_USERNAME or credentials.password != DEMO_PASSWORD:
+    # Validera credentials med säker hash-jämförelse
+    username_valid = credentials.username == DEMO_USERNAME
+    password_valid = pwd_context.verify(credentials.password, DEMO_PASSWORD_HASH) if DEMO_PASSWORD_HASH else False
+
+    if not (username_valid and password_valid):
+        logger.warning(f"Failed basic auth login for user '{credentials.username}' (IP: {get_remote_address(request)})")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -106,7 +147,7 @@ async def login_basic(credentials: HTTPBasicCredentials = Depends(security_basic
     # Skapa JWT token
     access_token = create_access_token(data={"sub": credentials.username})
 
-    logger.info(f"User {credentials.username} logged in via Basic Auth")
+    logger.info(f"User {credentials.username} logged in via Basic Auth (IP: {get_remote_address(request)})")
 
     return LoginResponse(
         access_token=access_token,

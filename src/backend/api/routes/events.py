@@ -1,7 +1,7 @@
 """
 Event routes - Event/alarm endpoints
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional
 from datetime import datetime
 import logging
@@ -9,6 +9,7 @@ import os
 
 from models.events import Event, EventStatus, EventType, EventSeverity
 from services.events import EventService
+from api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,14 @@ def get_event_service() -> EventService:
 
 
 @router.get("/latest")
-async def get_latest_events(limit: int = Query(50, ge=1, le=1000)) -> List[Event]:
+async def get_latest_events(
+    limit: int = Query(50, ge=1, le=1000),
+    current_user: dict = Depends(get_current_user)
+) -> List[Event]:
     """
     Hämta de senaste händelserna
+
+    Requires authentication.
 
     Args:
         limit: Max antal events att returnera (1-1000)
@@ -58,10 +64,13 @@ async def get_events(
     severity: Optional[EventSeverity] = None,
     status: Optional[EventStatus] = None,
     device_id: Optional[str] = None,
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(100, ge=1, le=1000),
+    current_user: dict = Depends(get_current_user)
 ) -> List[Event]:
     """
     Hämta events med filtrering
+
+    Requires authentication.
 
     Args:
         from_time: Starttid för filtrering
@@ -93,9 +102,14 @@ async def get_events(
 
 
 @router.post("/ack/{event_id}")
-async def acknowledge_event(event_id: str) -> dict:
+async def acknowledge_event(
+    event_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
     """
     Kvittera ett specifikt larm
+
+    Requires authentication.
 
     Args:
         event_id: Event ID att kvittera

@@ -7,6 +7,7 @@ from typing import Optional
 from jose import JWTError, jwt
 import os
 import logging
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -16,16 +17,32 @@ security = HTTPBearer(auto_error=False)
 # JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 
-# Validera att JWT_SECRET_KEY är satt i produktion
+# Validera JWT_SECRET_KEY baserat på miljö
 if not SECRET_KEY:
-    # Generera en temporär nyckel för utveckling, men varna
-    import secrets
-    SECRET_KEY = secrets.token_urlsafe(32)
-    logger.warning(
-        "JWT_SECRET_KEY not set! Generated temporary key for development. "
-        "Set JWT_SECRET_KEY environment variable in production!"
-    )
+    if DEMO_MODE:
+        # I demo-läge: generera temporär nyckel men varna tydligt
+        SECRET_KEY = secrets.token_urlsafe(32)
+        logger.warning(
+            "⚠️  JWT_SECRET_KEY not set! Generated temporary key for DEMO MODE. "
+            "Tokens will be invalidated on restart. "
+            "Set JWT_SECRET_KEY environment variable for persistent sessions."
+        )
+    else:
+        # I produktion: fail fast - kräv att nyckeln är satt
+        raise RuntimeError(
+            "🚨 SECURITY ERROR: JWT_SECRET_KEY must be set in production! "
+            "Either set JWT_SECRET_KEY environment variable or enable DEMO_MODE=true for development. "
+            "Generate a secure key with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
+else:
+    # Validera att nyckeln är tillräckligt lång
+    if len(SECRET_KEY) < 32:
+        logger.warning(
+            "⚠️  JWT_SECRET_KEY is shorter than recommended (32+ characters). "
+            "Consider using a longer key for better security."
+        )
 
 
 def create_access_token(data: dict, expires_delta: Optional[int] = None):

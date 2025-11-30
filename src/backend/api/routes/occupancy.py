@@ -1,9 +1,11 @@
 """
 Occupancy routes - API endpoints för rumsnärvaro-detektering
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 import logging
 from typing import Optional
+
+from api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -12,10 +14,13 @@ router = APIRouter()
 @router.get("/status")
 async def get_occupancy_status(
     device_id: Optional[str] = Query(default="halo-device-1", description="Enhets-ID"),
-    include_details: bool = Query(default=True, description="Inkludera detaljerad poängberäkning")
+    include_details: bool = Query(default=True, description="Inkludera detaljerad poängberäkning"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Hämta aktuell närvaro-status baserat på sensordata.
+
+    Requires authentication.
 
     Använder en poängbaserad approach med CO2, ljud och BLE-beacons.
 
@@ -40,10 +45,13 @@ async def get_occupancy_status(
 @router.get("/history")
 async def get_occupancy_history(
     device_id: Optional[str] = Query(default="halo-device-1", description="Enhets-ID"),
-    hours: int = Query(default=24, ge=1, le=168, description="Antal timmar bakåt (max 7 dagar)")
+    hours: int = Query(default=24, ge=1, le=168, description="Antal timmar bakåt (max 7 dagar)"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Hämta occupancy-historik för trendanalys.
+
+    Requires authentication.
 
     Returns:
         Historik med statistik över angiven period
@@ -64,9 +72,13 @@ async def get_occupancy_history(
 
 
 @router.get("/config")
-async def get_occupancy_config():
+async def get_occupancy_config(
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hämta konfiguration för occupancy-detektering.
+
+    Requires authentication.
 
     Returns:
         Tröskelvärden och poängsystem

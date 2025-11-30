@@ -4,12 +4,52 @@ Sensor Service - Hämtar sensor-data från InfluxDB
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
+import re
 from influxdb_client import Point
 from influxdb_client.client.query_api import QueryApi
 
 from .influxdb import InfluxDBService
 
 logger = logging.getLogger(__name__)
+
+# Input validation pattern - tillåter alfanumeriska tecken, bindestreck, understreck och slash
+VALID_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_/-]+$')
+MAX_ID_LENGTH = 100
+
+
+def validate_identifier(value: str, field_name: str) -> str:
+    """
+    Validera och sanera identifierare för säker användning i queries.
+
+    Args:
+        value: Värde att validera
+        field_name: Fältnamn för felmeddelanden
+
+    Returns:
+        Validerat värde
+
+    Raises:
+        ValueError: Om värdet är ogiltigt
+    """
+    if not value:
+        raise ValueError(f"{field_name} cannot be empty")
+
+    if len(value) > MAX_ID_LENGTH:
+        raise ValueError(f"{field_name} exceeds maximum length of {MAX_ID_LENGTH}")
+
+    if not VALID_ID_PATTERN.match(value):
+        raise ValueError(
+            f"{field_name} contains invalid characters. "
+            f"Only alphanumeric characters, hyphens, underscores and slashes are allowed."
+        )
+
+    # Extra säkerhet: kontrollera inga Flux-injektion-tecken
+    dangerous_patterns = ['|>', '"', "'", '\\', '/*', '*/', ';', '--']
+    for pattern in dangerous_patterns:
+        if pattern in value:
+            raise ValueError(f"{field_name} contains forbidden pattern: {pattern}")
+
+    return value
 
 
 class SensorService:
@@ -31,6 +71,9 @@ class SensorService:
             Dictionary med senaste sensorvärden
         """
         device_id = device_id or self.device_id
+
+        # Validera device_id
+        device_id = validate_identifier(device_id, "device_id")
 
         try:
             # Query för att hämta senaste värden per sensor
@@ -102,6 +145,14 @@ class SensorService:
         """
         device_id = device_id or self.device_id
 
+        # Validera inputs
+        sensor_id = validate_identifier(sensor_id, "sensor_id")
+        device_id = validate_identifier(device_id, "device_id")
+
+        # Validera limit
+        if not 1 <= limit <= 10000:
+            raise ValueError("limit must be between 1 and 10000")
+
         if from_time is None:
             from_time = datetime.utcnow() - timedelta(hours=24)
         if to_time is None:
@@ -164,6 +215,13 @@ class SensorService:
         """
         device_id = device_id or self.device_id
 
+        # Validera inputs
+        device_id = validate_identifier(device_id, "device_id")
+
+        # Validera limit
+        if not 1 <= limit <= 10000:
+            raise ValueError("limit must be between 1 and 10000")
+
         if from_time is None:
             from_time = datetime.utcnow() - timedelta(hours=24)
         if to_time is None:
@@ -211,6 +269,9 @@ class SensorService:
             Senaste heartbeat eller None
         """
         device_id = device_id or self.device_id
+
+        # Validera device_id
+        device_id = validate_identifier(device_id, "device_id")
 
         try:
             query = f'''

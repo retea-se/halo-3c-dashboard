@@ -1,12 +1,13 @@
 """
 Beacon routes - BLE Beacon endpoints
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional
 from datetime import datetime
 import logging
 
 from services.beacons import BeaconService
+from api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -23,9 +24,14 @@ def get_beacon_service() -> BeaconService:
 
 
 @router.get("")
-async def get_all_beacons(device_id: Optional[str] = None) -> List[dict]:
+async def get_all_beacons(
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+) -> List[dict]:
     """
     Lista alla kända beacons med senaste status
+
+    Requires authentication.
 
     Args:
         device_id: Device ID (optional)
@@ -43,9 +49,15 @@ async def get_all_beacons(device_id: Optional[str] = None) -> List[dict]:
 
 
 @router.get("/{beacon_id}")
-async def get_beacon_details(beacon_id: str, device_id: Optional[str] = None) -> dict:
+async def get_beacon_details(
+    beacon_id: str,
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
     """
     Detaljerad info om specifik beacon
+
+    Requires authentication.
 
     Args:
         beacon_id: Beacon-ID
@@ -75,10 +87,13 @@ async def get_beacon_history(
     from_time: Optional[datetime] = None,
     to_time: Optional[datetime] = None,
     limit: int = Query(100, ge=1, le=10000),
-    device_id: Optional[str] = None
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ) -> List[dict]:
     """
     Närvarohistorik för specifik beacon
+
+    Requires authentication.
 
     Args:
         beacon_id: Beacon-ID
@@ -111,10 +126,13 @@ async def get_beacon_alerts(
     from_time: Optional[datetime] = None,
     to_time: Optional[datetime] = None,
     limit: int = Query(50, ge=1, le=1000),
-    device_id: Optional[str] = None
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ) -> List[dict]:
     """
     Panikknapp-events för specifik beacon
+
+    Requires authentication.
 
     Args:
         beacon_id: Beacon-ID
@@ -142,9 +160,14 @@ async def get_beacon_alerts(
 
 
 @router.get("/presence/current")
-async def get_current_presence(device_id: Optional[str] = None) -> List[dict]:
+async def get_current_presence(
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+) -> List[dict]:
     """
     Alla närvarande beacons just nu
+
+    Requires authentication.
 
     Args:
         device_id: Device ID (optional)

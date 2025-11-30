@@ -1,7 +1,7 @@
 """
 Sensor routes - inkluderar sensor metadata och sensor-data endpoints
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional
 from datetime import datetime
 import json
@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 
 from services.sensors import SensorService
+from api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -38,9 +39,13 @@ def load_sensor_metadata():
 
 
 @router.get("/meta")
-async def get_all_sensor_metadata() -> List[dict]:
+async def get_all_sensor_metadata(
+    current_user: dict = Depends(get_current_user)
+) -> List[dict]:
     """
     Hämta metadata för alla sensorer
+
+    Requires authentication.
 
     Returns:
         Lista med sensor-metadata
@@ -54,9 +59,14 @@ async def get_all_sensor_metadata() -> List[dict]:
 
 
 @router.get("/meta/{sensor_id:path}")
-async def get_sensor_metadata(sensor_id: str) -> dict:
+async def get_sensor_metadata(
+    sensor_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
     """
     Hamta metadata for en specifik sensor
+
+    Requires authentication.
 
     Args:
         sensor_id: Sensor-ID (t.ex. "co2sensor_co2" eller "htsensor/ctemp")
@@ -95,9 +105,14 @@ async def get_sensor_metadata(sensor_id: str) -> dict:
 
 
 @router.get("/latest")
-async def get_latest_sensor_values(device_id: Optional[str] = None):
+async def get_latest_sensor_values(
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Hämta senaste sensorvärden från InfluxDB
+
+    Requires authentication.
 
     Args:
         device_id: Device ID (optional)
@@ -120,10 +135,13 @@ async def get_sensor_history(
     from_time: Optional[datetime] = None,
     to_time: Optional[datetime] = None,
     limit: int = Query(1000, ge=1, le=10000),
-    device_id: Optional[str] = None
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Hämta historik för en specifik sensor
+
+    Requires authentication.
 
     Args:
         sensor_id: Sensor ID (e.g., htsensor/ctemp)
@@ -166,10 +184,13 @@ async def get_heartbeat_history(
     from_time: Optional[datetime] = None,
     to_time: Optional[datetime] = None,
     limit: int = Query(1000, ge=1, le=10000),
-    device_id: Optional[str] = None
+    device_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Hämta heartbeat-historik för att se när Halo varit nåbar/onåbar
+
+    Requires authentication.
 
     Args:
         from_time: Starttid (ISO8601, optional)

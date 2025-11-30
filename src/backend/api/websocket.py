@@ -1,7 +1,7 @@
 """
 WebSocket endpoint för real-time event stream
 """
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from typing import Set, Optional
 import json
 import logging
@@ -9,6 +9,7 @@ import asyncio
 from datetime import datetime
 
 from models.events import Event
+from api.middleware.auth import verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,34 @@ manager = ConnectionManager()
 
 
 @router.websocket("/api/events/stream")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None, description="JWT authentication token")
+):
     """
     WebSocket endpoint för real-time event stream
 
+    Requires authentication via token query parameter.
+
     Klienter kan ansluta för att få real-time uppdateringar när nya events skapas.
+
+    Example: ws://localhost:8000/api/events/stream?token=<jwt_token>
     """
+    # Verifiera token innan anslutning accepteras
+    if not token:
+        await websocket.close(code=4001, reason="Missing authentication token")
+        logger.warning("WebSocket connection rejected: Missing token")
+        return
+
+    payload = verify_token(token)
+    if not payload:
+        await websocket.close(code=4001, reason="Invalid authentication token")
+        logger.warning("WebSocket connection rejected: Invalid token")
+        return
+
+    username = payload.get("sub", "unknown")
+    logger.info(f"WebSocket authenticated for user: {username}")
+
     await manager.connect(websocket)
 
     try:
@@ -70,6 +93,7 @@ async def websocket_endpoint(websocket: WebSocket):
             json.dumps({
                 "type": "connected",
                 "message": "Connected to event stream",
+                "user": username,
                 "timestamp": datetime.utcnow().isoformat()
             }),
             websocket
