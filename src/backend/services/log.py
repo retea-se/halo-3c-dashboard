@@ -114,8 +114,11 @@ class LogService:
                     id_value = None
 
                     # Gå igenom alla värden i record
+                    # Ignorera InfluxDB-interna kolumner
+                    internal_columns = {'_time', '_measurement', '_start', '_stop', 'result', 'table', '_field', '_value'}
+
                     for key_name, value in record.values.items():
-                        if key_name in ['_time', '_measurement', '_start', '_stop']:
+                        if key_name in internal_columns:
                             continue
 
                         # Identifiera om det är en tag eller field

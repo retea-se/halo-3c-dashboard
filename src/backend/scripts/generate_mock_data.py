@@ -29,8 +29,8 @@ INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN", "")
 INFLUXDB_ORG = os.getenv("INFLUXDB_ORG", "halo-org")
 INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "halo-sensors")
 
-# Device ID for mock data
-DEVICE_ID = "halo-3c-demo"
+# Device ID for mock data - same as live data
+DEVICE_ID = "halo-device-1"
 
 # Number of days to generate
 DAYS_TO_GENERATE = 365
@@ -337,7 +337,13 @@ def generate_data_points(start_date: datetime, end_date: datetime) -> Generator[
 
 
 def write_to_influxdb(client: InfluxDBClient, data_points: Generator):
-    """Write data points to InfluxDB in batches"""
+    """Write data points to InfluxDB in batches
+
+    Uses same measurement format as live data:
+    - measurement: sensor_{sensor_type} (e.g., sensor_htsensor, sensor_co2sensor)
+    - tag: sensor_id = full sensor path (e.g., htsensor/ctemp)
+    - field: value = sensor value
+    """
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     batch = []
@@ -354,8 +360,12 @@ def write_to_influxdb(client: InfluxDBClient, data_points: Generator):
         timestamp = data["timestamp"]
 
         for sensor_id, value in data["sensors"].items():
+            # Extract sensor type from sensor_id (e.g., "htsensor" from "htsensor/ctemp")
+            sensor_type = sensor_id.split('/')[0]
+            measurement_name = f"sensor_{sensor_type}"
+
             point = (
-                Point("sensor_data")
+                Point(measurement_name)
                 .tag("device_id", DEVICE_ID)
                 .tag("sensor_id", sensor_id)
                 .field("value", float(value))
