@@ -400,3 +400,164 @@ class HaloClient:
             logger.error(f"Unexpected error fetching event state: {e}", exc_info=True)
             return None
 
+    def get_full_config(self) -> Optional[Dict]:
+        """
+        Hämta fullständig konfiguration från Halo 3C
+
+        Returns:
+            Dictionary med hela konfigurationen, eller None vid fel
+        """
+        global _last_successful_contact, _last_contact_error
+
+        try:
+            url = f"{self.protocol}://{self.ip}/api/config"
+            response = requests.get(
+                url,
+                auth=self.auth,
+                timeout=self.timeout,
+                verify=False
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            # Uppdatera heartbeat
+            _last_successful_contact = datetime.utcnow()
+            _last_contact_error = None
+
+            logger.debug(f"Successfully fetched full config from {url}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            _last_contact_error = str(e)
+            logger.error(f"Failed to fetch full config: {e}")
+            return None
+        except Exception as e:
+            _last_contact_error = str(e)
+            logger.error(f"Unexpected error fetching full config: {e}", exc_info=True)
+            return None
+
+    def update_config(self, config: Dict) -> bool:
+        """
+        Uppdatera konfiguration på Halo 3C
+
+        Args:
+            config: Dictionary med konfiguration att uppdatera
+
+        Returns:
+            True om uppdateringen lyckades, False annars
+        """
+        global _last_successful_contact, _last_contact_error
+
+        try:
+            url = f"{self.protocol}://{self.ip}/api/config"
+            response = requests.post(
+                url,
+                auth=self.auth,
+                json=config,
+                timeout=self.timeout,
+                verify=False
+            )
+            response.raise_for_status()
+
+            # Uppdatera heartbeat
+            _last_successful_contact = datetime.utcnow()
+            _last_contact_error = None
+
+            logger.info(f"Successfully updated Halo config")
+            return True
+
+        except requests.exceptions.RequestException as e:
+            _last_contact_error = str(e)
+            logger.error(f"Failed to update config: {e}")
+            return False
+        except Exception as e:
+            _last_contact_error = str(e)
+            logger.error(f"Unexpected error updating config: {e}", exc_info=True)
+            return False
+
+    def get_rtsp_config(self) -> Optional[Dict]:
+        """
+        Hämta RTSP-konfiguration från Halo 3C
+
+        Returns:
+            Dictionary med RTSP-konfiguration, eller None vid fel
+        """
+        try:
+            config = self.get_full_config()
+            if config:
+                return config.get("rtsp", {})
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get RTSP config: {e}", exc_info=True)
+            return None
+
+    def update_rtsp_config(self, rtsp_config: Dict) -> bool:
+        """
+        Uppdatera RTSP-konfiguration på Halo 3C
+
+        Args:
+            rtsp_config: Dictionary med RTSP-inställningar att uppdatera
+
+        Returns:
+            True om uppdateringen lyckades, False annars
+        """
+        try:
+            # Hämta nuvarande config
+            config = self.get_full_config()
+            if not config:
+                logger.error("Could not fetch current config for RTSP update")
+                return False
+
+            # Uppdatera RTSP-sektionen
+            config["rtsp"] = rtsp_config
+
+            # Skicka uppdaterad config
+            return self.update_config(config)
+
+        except Exception as e:
+            logger.error(f"Failed to update RTSP config: {e}", exc_info=True)
+            return False
+
+    def get_bacnet_config(self) -> Optional[Dict]:
+        """
+        Hämta BACnet-konfiguration från Halo 3C
+
+        Returns:
+            Dictionary med BACnet-konfiguration, eller None vid fel
+        """
+        try:
+            config = self.get_full_config()
+            if config:
+                return config.get("bacnet", {})
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get BACnet config: {e}", exc_info=True)
+            return None
+
+    def update_bacnet_config(self, bacnet_config: Dict) -> bool:
+        """
+        Uppdatera BACnet-konfiguration på Halo 3C
+
+        Args:
+            bacnet_config: Dictionary med BACnet-inställningar att uppdatera
+
+        Returns:
+            True om uppdateringen lyckades, False annars
+        """
+        try:
+            # Hämta nuvarande config
+            config = self.get_full_config()
+            if not config:
+                logger.error("Could not fetch current config for BACnet update")
+                return False
+
+            # Uppdatera BACnet-sektionen
+            config["bacnet"] = bacnet_config
+
+            # Skicka uppdaterad config
+            return self.update_config(config)
+
+        except Exception as e:
+            logger.error(f"Failed to update BACnet config: {e}", exc_info=True)
+            return False
+

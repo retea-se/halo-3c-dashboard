@@ -18,6 +18,7 @@ import { DeviceInfo } from './pages/DeviceInfo';
 import { Documentation } from './pages/Documentation';
 import { Log } from './pages/Log';
 import { Login } from './pages/Login';
+import { Integrations } from './pages/Integrations';
 
 /**
  * AppContent - Innehall som kraver auth context
@@ -99,6 +100,11 @@ const AppContent: React.FC = () => {
           <Route path="/log" element={
             <ProtectedRoute>
               <Log />
+            </ProtectedRoute>
+          } />
+          <Route path="/integrations" element={
+            <ProtectedRoute>
+              <Integrations />
             </ProtectedRoute>
           } />
         </Routes>

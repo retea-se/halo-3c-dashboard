@@ -23,6 +23,7 @@ const navItems: NavItem[] = [
   { path: '/log', label: 'Logg', icon: 'log-icon' },
   { path: '/sensors/info', label: 'Sensor Info', icon: 'sensor-info-icon' },
   { path: '/device', label: 'Enhet', icon: 'device-icon' },
+  { path: '/integrations', label: 'Integrationer', icon: 'integrations-icon' },
   { path: '/docs', label: 'Docs', icon: 'docs-icon' },
 ];
 
