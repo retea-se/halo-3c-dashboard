@@ -26,6 +26,8 @@ class OccupancyService:
     - Ljudnivå > 55 dB: +2 poäng
     - Ljudnivå > 45 dB: +1 poäng
     - PIR-rörelse detekterad: +4 poäng (direkt rörelseindikation)
+    - Ljusnivå > 300 lux: +2 poäng (stark belysning)
+    - Ljusnivå > 200 lux: +1 poäng (belysning tänd)
 
     OBS: BLE Beacon är borttaget ur denna lösning (se backlog för framtida implementation)
 
@@ -48,6 +50,11 @@ class OccupancyService:
     PIR_HIGH_THRESHOLD = 1        # Aktiv rörelse detekterad
     PIR_MEDIUM_THRESHOLD = 0.5    # Möjlig rörelse
     PIR_BASELINE = 0              # Ingen rörelse
+
+    # Ljuströsklar (belysning som indikation på närvaro)
+    LIGHT_HIGH_THRESHOLD = 300    # lux - stark belysning
+    LIGHT_MEDIUM_THRESHOLD = 200  # lux - belysning tänd
+    LIGHT_BASELINE = 50           # lux - mörkt/naturligt ljus
 
     # Poängtrösklar
     OCCUPIED_THRESHOLD = 3
@@ -93,6 +100,7 @@ class OccupancyService:
         co2_value = self._extract_sensor_value(latest_values, ["co2sensor/co2", "co2sensor/co2fo"])
         audio_value = self._extract_sensor_value(latest_values, ["audsensor/sum"])
         pir_value = self._extract_sensor_value(latest_values, ["pirsensor/signal", "pirsensor/val"])
+        light_value = self._extract_sensor_value(latest_values, ["luxsensor/alux", "luxsensor/aluxfilt"])
 
         # BLE Beacons är borttaget ur denna lösning
         # Se backlog för framtida implementation
@@ -101,7 +109,8 @@ class OccupancyService:
         score, score_breakdown = self._calculate_occupancy_score(
             co2_value=co2_value,
             audio_value=audio_value,
-            pir_value=pir_value
+            pir_value=pir_value,
+            light_value=light_value
         )
 
         # Bestäm status
@@ -148,11 +157,22 @@ class OccupancyService:
                 "pir": {
                     "value": pir_value,
                     "unit": "",
+                    "motion_detected": pir_value is not None and pir_value >= 1,
                     "contribution": score_breakdown.get("pir", 0),
                     "thresholds": {
                         "high": self.PIR_HIGH_THRESHOLD,
                         "medium": self.PIR_MEDIUM_THRESHOLD,
                         "baseline": self.PIR_BASELINE,
+                    }
+                },
+                "light": {
+                    "value": light_value,
+                    "unit": "lux",
+                    "contribution": score_breakdown.get("light", 0),
+                    "thresholds": {
+                        "high": self.LIGHT_HIGH_THRESHOLD,
+                        "medium": self.LIGHT_MEDIUM_THRESHOLD,
+                        "baseline": self.LIGHT_BASELINE,
                     }
                 },
                 # BLE Beacon borttaget - se backlog för framtida implementation
@@ -205,7 +225,8 @@ class OccupancyService:
         self,
         co2_value: Optional[float],
         audio_value: Optional[float],
-        pir_value: Optional[float]
+        pir_value: Optional[float],
+        light_value: Optional[float] = None
     ) -> tuple[int, Dict[str, int]]:
         """
         Beräkna occupancy-poäng baserat på sensorvärden.
@@ -213,7 +234,7 @@ class OccupancyService:
         Returns:
             Tuple med (total_score, breakdown_dict)
         """
-        breakdown = {"co2": 0, "audio": 0, "pir": 0, "beacon": 0}
+        breakdown = {"co2": 0, "audio": 0, "pir": 0, "light": 0, "beacon": 0}
 
         # CO2-poäng (sänkt från 3 till 2 för hög nivå)
         # CO2 ensam är inte tillräckligt pålitlig för hög konfidens
@@ -237,6 +258,13 @@ class OccupancyService:
             elif pir_value >= self.PIR_MEDIUM_THRESHOLD:
                 breakdown["pir"] = 2
 
+        # Ljus-poäng (belysning indikerar ofta närvaro)
+        if light_value is not None:
+            if light_value >= self.LIGHT_HIGH_THRESHOLD:
+                breakdown["light"] = 2
+            elif light_value >= self.LIGHT_MEDIUM_THRESHOLD:
+                breakdown["light"] = 1
+
         # BLE Beacon borttaget - sätts alltid till 0
         # Se backlog för framtida implementation
         breakdown["beacon"] = 0
@@ -250,6 +278,7 @@ class OccupancyService:
 
         Hög konfidens kräver flera oberoende sensorer eller PIR-detektion.
         CO2 ensam ger aldrig hög konfidens.
+        Ljussensor förstärker konfidens när kombinerad med andra indikatorer.
         """
         if score >= 5:
             return "high"
@@ -257,6 +286,11 @@ class OccupancyService:
             # Score 4 kan vara high om PIR bidrar (direkt rörelseindikation)
             if breakdown and breakdown.get("pir", 0) >= 2:
                 return "high"
+            # Eller om ljus + annan sensor bidrar (flera oberoende källor)
+            if breakdown and breakdown.get("light", 0) >= 1:
+                other_contributions = sum(v for k, v in breakdown.items() if k not in ["light", "beacon"])
+                if other_contributions >= 2:
+                    return "high"
             return "medium"
         elif score >= 3:
             return "medium"

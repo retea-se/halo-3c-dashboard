@@ -242,14 +242,22 @@ export const OccupancyCard: React.FC<OccupancyCardProps> = ({
                   thresholds={status.details.audio.thresholds}
                 />
 
-                {/* PIR */}
+                {/* PIR - visas som text (Rörelse/Ingen rörelse) */}
                 {status.details.pir && (
-                  <DetailRow
-                    label="PIR (rörelse)"
-                    value={status.details.pir.value}
-                    unit=""
+                  <PirDetailRow
+                    motionDetected={status.details.pir.motion_detected}
                     contribution={status.details.pir.contribution}
-                    thresholds={status.details.pir.thresholds}
+                  />
+                )}
+
+                {/* Ljus */}
+                {status.details.light && (
+                  <DetailRow
+                    label="Ljus"
+                    value={status.details.light.value}
+                    unit={status.details.light.unit}
+                    contribution={status.details.light.contribution}
+                    thresholds={status.details.light.thresholds}
                   />
                 )}
 
@@ -333,6 +341,42 @@ const DetailRow: React.FC<DetailRowProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
         <span style={{ color: getValueColor(), fontWeight: 500 }}>
           {value !== null ? `${value.toFixed(1)} ${unit}` : 'N/A'}
+        </span>
+        <ContributionBadge value={contribution} />
+      </div>
+    </div>
+  );
+};
+
+// PIR-specifik rad som visar "Rörelse" eller "Ingen rörelse" istället för siffror
+interface PirDetailRowProps {
+  motionDetected: boolean;
+  contribution: number;
+}
+
+const PirDetailRow: React.FC<PirDetailRowProps> = ({
+  motionDetected,
+  contribution,
+}) => {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 'var(--spacing-xs) var(--spacing-sm)',
+      backgroundColor: 'var(--color-surface)',
+      borderRadius: 'var(--radius-md)',
+      fontSize: 'var(--font-size-sm)',
+    }}>
+      <span style={{ color: 'var(--color-text-secondary)' }}>
+        PIR (rörelse)
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+        <span style={{
+          color: motionDetected ? '#22c55e' : 'var(--color-text-tertiary)',
+          fontWeight: 500,
+        }}>
+          {motionDetected ? 'Rörelse' : 'Ingen rörelse'}
         </span>
         <ContributionBadge value={contribution} />
       </div>

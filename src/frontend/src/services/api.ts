@@ -220,6 +220,13 @@ export interface OccupancyStatus {
     pir?: {
       value: number | null;
       unit: string;
+      motion_detected: boolean;
+      contribution: number;
+      thresholds: { high: number; medium: number; baseline: number };
+    };
+    light?: {
+      value: number | null;
+      unit: string;
       contribution: number;
       thresholds: { high: number; medium: number; baseline: number };
     };
@@ -233,6 +240,7 @@ export interface OccupancyStatus {
     co2: number;
     audio: number;
     pir: number;
+    light: number;
     beacon: number;
   };
   error?: string;

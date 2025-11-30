@@ -11,6 +11,27 @@ interface HeartbeatStatus {
   error: string | null;
 }
 
+interface SystemStatus {
+  backend: string;
+  influxdb: {
+    status: string;
+    url?: string;
+    bucket?: string;
+    error?: string;
+  };
+  halo_sensor: {
+    status: string;
+    ip?: string;
+    error?: string;
+  };
+  heartbeat: HeartbeatStatus;
+  collector: {
+    status: string;
+    note?: string;
+  };
+  timestamp: string;
+}
+
 interface HeartbeatIndicatorProps {
   refreshInterval?: number; // ms, default 10000
   showDetails?: boolean;
@@ -58,6 +79,10 @@ export const HeartbeatIndicator: React.FC<HeartbeatIndicatorProps> = ({
 }) => {
   const [heartbeat, setHeartbeat] = useState<HeartbeatStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showPopup, setShowPopup] = useState(false);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [loadingSystemStatus, setLoadingSystemStatus] = useState(false);
+  const popupRef = React.useRef<HTMLDivElement>(null);
 
   const fetchHeartbeat = useCallback(async () => {
     try {
@@ -85,11 +110,50 @@ export const HeartbeatIndicator: React.FC<HeartbeatIndicatorProps> = ({
     }
   }, []);
 
+  const fetchSystemStatus = useCallback(async () => {
+    setLoadingSystemStatus(true);
+    try {
+      const response = await fetch('/api/system/status');
+      if (response.ok) {
+        const data = await response.json();
+        setSystemStatus(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch system status:', error);
+    } finally {
+      setLoadingSystemStatus(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchHeartbeat();
     const interval = setInterval(fetchHeartbeat, refreshInterval);
     return () => clearInterval(interval);
   }, [fetchHeartbeat, refreshInterval]);
+
+  // Hämta systemstatus när popup öppnas
+  useEffect(() => {
+    if (showPopup) {
+      fetchSystemStatus();
+    }
+  }, [showPopup, fetchSystemStatus]);
+
+  // Stäng popup vid klick utanför
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setShowPopup(false);
+      }
+    };
+
+    if (showPopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showPopup]);
 
   if (loading) return null;
 
@@ -98,31 +162,137 @@ export const HeartbeatIndicator: React.FC<HeartbeatIndicatorProps> = ({
 
   if (compact) {
     return (
-      <div
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '4px 8px',
-          borderRadius: '9999px',
-          backgroundColor: colors.bg,
-          border: `1px solid ${colors.border}`,
-          fontSize: 'var(--font-size-xs)',
-        }}
-        title={`Halo Heartbeat: ${getStatusLabel(status)}${heartbeat?.seconds_since_contact ? ` (${formatTimeSince(heartbeat.seconds_since_contact)})` : ''}`}
-      >
-        <span
+      <div ref={popupRef} style={{ position: 'relative' }}>
+        <button
+          onClick={() => setShowPopup(!showPopup)}
           style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: colors.border,
-            animation: colors.pulse ? 'pulse 2s infinite' : 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 8px',
+            borderRadius: '9999px',
+            backgroundColor: colors.bg,
+            border: `1px solid ${colors.border}`,
+            fontSize: 'var(--font-size-xs)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
           }}
-        />
-        <span style={{ color: colors.text, fontWeight: 500 }}>
-          {getStatusLabel(status)}
-        </span>
+          title={`Klicka för systemstatus`}
+        >
+          <span
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: colors.border,
+              animation: colors.pulse ? 'pulse 2s infinite' : 'none',
+            }}
+          />
+          <span style={{ color: colors.text, fontWeight: 500 }}>
+            {getStatusLabel(status)}
+          </span>
+        </button>
+
+        {/* Popup */}
+        {showPopup && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              right: 0,
+              minWidth: '280px',
+              backgroundColor: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              zIndex: 1000,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: 'var(--spacing-sm) var(--spacing-md)',
+                borderBottom: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
+              }}
+            >
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                Systemstatus
+              </span>
+              <button
+                onClick={() => setShowPopup(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: '16px',
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: 'var(--spacing-sm)' }}>
+              {loadingSystemStatus ? (
+                <div style={{ padding: 'var(--spacing-md)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                  Laddar...
+                </div>
+              ) : systemStatus ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                  <StatusRow
+                    label="Halo Sensor"
+                    status={systemStatus.halo_sensor.status}
+                    detail={systemStatus.halo_sensor.ip}
+                  />
+                  <StatusRow
+                    label="InfluxDB"
+                    status={systemStatus.influxdb.status}
+                    detail={systemStatus.influxdb.bucket}
+                  />
+                  <StatusRow
+                    label="Backend"
+                    status={systemStatus.backend}
+                  />
+                  <StatusRow
+                    label="Collector"
+                    status={systemStatus.collector.status}
+                  />
+                </div>
+              ) : (
+                <div style={{ padding: 'var(--spacing-md)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                  Kunde inte hämta status
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: 'var(--spacing-xs) var(--spacing-md)',
+                borderTop: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              {heartbeat?.seconds_since_contact !== null && heartbeat?.seconds_since_contact !== undefined && (
+                <div>Senaste kontakt: {formatTimeSince(heartbeat.seconds_since_contact)}</div>
+              )}
+              {systemStatus?.timestamp && (
+                <div>Uppdaterad: {new Date(systemStatus.timestamp).toLocaleTimeString('sv-SE')}</div>
+              )}
+            </div>
+          </div>
+        )}
+
         <style>
           {`
             @keyframes pulse {
@@ -212,6 +382,83 @@ export const HeartbeatIndicator: React.FC<HeartbeatIndicatorProps> = ({
           }
         `}
       </style>
+    </div>
+  );
+};
+
+// Hjälpkomponent för att visa status-rad i popup
+interface StatusRowProps {
+  label: string;
+  status: string;
+  detail?: string;
+}
+
+const StatusRow: React.FC<StatusRowProps> = ({ label, status, detail }) => {
+  const getStatusColor = (s: string): string => {
+    const normalized = s.toLowerCase();
+    if (normalized === 'connected' || normalized === 'healthy' || normalized === 'running') {
+      return '#22c55e'; // grön
+    }
+    if (normalized === 'degraded' || normalized === 'warning') {
+      return '#f59e0b'; // gul
+    }
+    if (normalized === 'error' || normalized === 'offline' || normalized === 'disconnected') {
+      return '#ef4444'; // röd
+    }
+    return '#9ca3af'; // grå för unknown
+  };
+
+  const getStatusLabel = (s: string): string => {
+    const labels: Record<string, string> = {
+      'connected': 'Ansluten',
+      'disconnected': 'Frånkopplad',
+      'healthy': 'OK',
+      'degraded': 'Fördröjd',
+      'offline': 'Offline',
+      'error': 'Fel',
+      'running': 'Kör',
+      'unknown': 'Okänd',
+      'not_configured': 'Ej konfigurerad',
+    };
+    return labels[s.toLowerCase()] || s;
+  };
+
+  const color = getStatusColor(status);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 'var(--spacing-xs) var(--spacing-sm)',
+        backgroundColor: 'var(--color-surface)',
+        borderRadius: 'var(--radius-md)',
+        fontSize: 'var(--font-size-sm)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+        <span
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: color,
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ color: 'var(--color-text-primary)' }}>{label}</span>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <span style={{ color, fontWeight: 500 }}>
+          {getStatusLabel(status)}
+        </span>
+        {detail && (
+          <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>
+            {detail}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
