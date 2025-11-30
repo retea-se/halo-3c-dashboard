@@ -9,7 +9,7 @@
 
 A comprehensive, real-time dashboard application for monitoring and visualizing data from the Halo 3C smart sensor. This full-stack solution provides intuitive visualization, event management, and educational sensor explanations with a modern, minimalist Nordic design.
 
-## 🎯 Overview
+## Overview
 
 The Halo 3C Dashboard is a production-ready monitoring system that collects, stores, and visualizes data from Halo 3C smart sensors. It supports 43 different sensor types, real-time event detection, BLE beacon management, and provides an educational interface to help users understand sensor data and environmental conditions.
 
@@ -22,7 +22,7 @@ The Halo 3C Dashboard is a production-ready monitoring system that collects, sto
 - **Modern UI**: Nordic minimalist design with light/dark mode support
 - **Production Ready**: Deployed via Docker on Synology NAS with Tailscale Funnel
 
-## ✨ Features
+## Features
 
 ### Core Functionality
 
@@ -64,7 +64,7 @@ The Halo 3C Dashboard is a production-ready monitoring system that collects, sto
   - WCAG AA accessibility compliance
   - Nordic minimalist design philosophy
 
-## 🏗️ Architecture
+## Architecture
 
 ### Technology Stack
 
@@ -107,7 +107,7 @@ User (Web Browser)
 4. **Delivery**: Backend API serves data via REST and WebSocket
 5. **Visualization**: React frontend displays real-time data with interactive UI
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 
@@ -169,7 +169,7 @@ DEMO_USERNAME=demo
 DEMO_PASSWORD=your-password
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Docker Compose Deployment
 
@@ -196,7 +196,7 @@ For secure external access without port forwarding:
 
 Example production URL: `https://mittemellan.tail00c71f.ts.net`
 
-## 📚 API Documentation
+## API Documentation
 
 ### Authentication
 
@@ -231,7 +231,7 @@ Example production URL: `https://mittemellan.tail00c71f.ts.net`
 
 **Full API documentation**: Available at `/docs` (Swagger UI) and `/redoc` (ReDoc)
 
-## 🧪 Testing
+## Testing
 
 ### Backend Tests
 
@@ -255,7 +255,7 @@ npm install
 npx playwright test
 ```
 
-## 📖 Documentation
+## Documentation
 
 Comprehensive documentation is available in the `docs/` directory:
 
@@ -266,7 +266,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - **Sensor Overview**: `docs/summary_sensor.md` - Sensor categories and types
 - **Deployment**: `docs/deployment.md` - Deployment guides
 
-## 🗺️ Navigation
+## Navigation
 
 | Page | Route | Description |
 |------|-------|-------------|
@@ -276,7 +276,7 @@ Comprehensive documentation is available in the `docs/` directory:
 | Events | `/events` | Event log with filtering and acknowledgment |
 | Sensor Info | `/sensors/info` | Detailed sensor information and FAQs |
 
-## 🔒 Security
+## Security
 
 - **Network Isolation**: Only frontend exposed externally
 - **Authentication**: JWT-based authentication with demo account
@@ -284,7 +284,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - **No Secrets in Code**: All sensitive data via environment variables
 - **Internal Services**: Backend, InfluxDB, and collector are internal-only
 
-## 🛠️ Development
+## Development
 
 ### Local Development Setup
 
@@ -329,7 +329,7 @@ halo-3c-dashboard/
 └── docker-compose.yml    # Docker orchestration
 ```
 
-## 📊 Sensor Categories
+## Sensor Categories
 
 The Halo 3C sensor provides 43 different sensor types across 5 categories:
 
@@ -339,7 +339,7 @@ The Halo 3C sensor provides 43 different sensor types across 5 categories:
 - **Motion** (4 sensors): PIR, Accelerometer, External input, BLE Beacon
 - **Health Index** (8 sensors): Overall and per-sensor health indices
 
-## 🎨 Design Philosophy
+## Design Philosophy
 
 The dashboard follows a **Nordic Minimalist** design approach:
 
@@ -349,15 +349,15 @@ The dashboard follows a **Nordic Minimalist** design approach:
 - **Accessibility First**: WCAG AA compliance, keyboard navigation
 - **No Emojis**: Only discrete SVG icons
 
-## 📝 License
+## License
 
 [Specify your license here]
 
-## 👥 Contributing
+## Contributing
 
 [Contributing guidelines - to be added]
 
-## 📞 Support
+## Support
 
 [Support information - to be added]
 
@@ -368,7 +368,7 @@ The dashboard follows a **Nordic Minimalist** design approach:
 
 En omfattande dashboard-applikation för realtidsövervakning och visualisering av data från Halo 3C smart sensor. Denna fullstack-lösning erbjuder intuitiv visualisering, event-hantering och pedagogiska sensorförklaringar med ett modernt, minimalistiskt nordiskt design.
 
-## 🎯 Översikt
+## Översikt
 
 Halo 3C Dashboard är ett produktionsklart övervakningssystem som samlar in, lagrar och visualiserar data från Halo 3C smart sensorer. Systemet stödjer 43 olika sensortyper, realtids event-detektering, BLE beacon-hantering och erbjuder ett pedagogiskt gränssnitt för att hjälpa användare förstå sensordata och miljöförhållanden.
 
@@ -381,7 +381,7 @@ Halo 3C Dashboard är ett produktionsklart övervakningssystem som samlar in, la
 - **Modernt UI**: Nordisk minimalistisk design med light/dark mode-stöd
 - **Produktionsklart**: Deployat via Docker på Synology NAS med Tailscale Funnel
 
-## ✨ Funktioner
+## Funktioner
 
 ### Kärnfunktionalitet
 
@@ -423,7 +423,7 @@ Halo 3C Dashboard är ett produktionsklart övervakningssystem som samlar in, la
   - WCAG AA tillgänglighetskompatibilitet
   - Nordisk minimalistisk designfilosofi
 
-## 🏗️ Arkitektur
+## Arkitektur
 
 ### Teknisk stack
 
@@ -466,7 +466,7 @@ Användare (Webbläsare)
 4. **Leverans**: Backend API serverar data via REST och WebSocket
 5. **Visualisering**: React frontend visar realtidsdata med interaktivt UI
 
-## 📦 Installation
+## Installation
 
 ### Förutsättningar
 
@@ -528,7 +528,7 @@ DEMO_USERNAME=demo
 DEMO_PASSWORD=ditt-lösenord
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Docker Compose-deployment
 
@@ -555,7 +555,7 @@ För säker extern åtkomst utan port forwarding:
 
 Exempel produktions-URL: `https://mittemellan.tail00c71f.ts.net`
 
-## 📚 API-dokumentation
+## API-dokumentation
 
 ### Autentisering
 
@@ -590,7 +590,7 @@ Exempel produktions-URL: `https://mittemellan.tail00c71f.ts.net`
 
 **Fullständig API-dokumentation**: Tillgänglig på `/docs` (Swagger UI) och `/redoc` (ReDoc)
 
-## 🧪 Testning
+## Testning
 
 ### Backend-tester
 
@@ -614,7 +614,7 @@ npm install
 npx playwright test
 ```
 
-## 📖 Dokumentation
+## Dokumentation
 
 Omfattande dokumentation finns i `docs/`-katalogen:
 
@@ -625,7 +625,7 @@ Omfattande dokumentation finns i `docs/`-katalogen:
 - **Sensoröversikt**: `docs/summary_sensor.md` - Sensorkategorier och typer
 - **Deployment**: `docs/deployment.md` - Deployment-guider
 
-## 🗺️ Navigation
+## Navigation
 
 | Sida | Route | Beskrivning |
 |------|-------|-------------|
@@ -635,7 +635,7 @@ Omfattande dokumentation finns i `docs/`-katalogen:
 | Events | `/events` | Eventlogg med filtrering och kvittering |
 | Sensor Info | `/sensors/info` | Detaljerad sensorinformation och FAQ |
 
-## 🔒 Säkerhet
+## Säkerhet
 
 - **Nätverksisolering**: Endast frontend exponeras externt
 - **Autentisering**: JWT-baserad autentisering med demo-konto
@@ -643,7 +643,7 @@ Omfattande dokumentation finns i `docs/`-katalogen:
 - **Inga secrets i kod**: All känslig data via miljövariabler
 - **Interna services**: Backend, InfluxDB och collector är endast interna
 
-## 🛠️ Utveckling
+## Utveckling
 
 ### Lokal utvecklingsmiljö
 
@@ -688,7 +688,7 @@ halo-3c-dashboard/
 └── docker-compose.yml    # Docker-orkestrering
 ```
 
-## 📊 Sensorkategorier
+## Sensorkategorier
 
 Halo 3C sensor tillhandahåller 43 olika sensortyper över 5 kategorier:
 
@@ -698,7 +698,7 @@ Halo 3C sensor tillhandahåller 43 olika sensortyper över 5 kategorier:
 - **Rörelse** (4 sensorer): PIR, Accelerometer, Extern ingång, BLE Beacon
 - **Hälsoindex** (8 sensorer): Totalt och per-sensor hälsoindex
 
-## 🎨 Designfilosofi
+## Designfilosofi
 
 Dashboarden följer en **Nordisk Minimalistisk** designfilosofi:
 
@@ -708,21 +708,21 @@ Dashboarden följer en **Nordisk Minimalistisk** designfilosofi:
 - **Tillgänglighet först**: WCAG AA-kompatibilitet, tangentbordsnavigation
 - **Inga emojis**: Endast diskreta SVG-ikoner
 
-## 📝 Licens
+## Licens
 
 [Ange din licens här]
 
-## 👥 Bidrag
+## Bidrag
 
 [Bidragsriktlinjer - att läggas till]
 
-## 📞 Support
+## Support
 
 [Supportinformation - att läggas till]
 
 ---
 
-## 📅 Status
+## Status
 
 **MÅL UPPNÅTT: 2025-11-29**
 
