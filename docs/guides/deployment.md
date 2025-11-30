@@ -278,6 +278,118 @@ docker-compose down -v
 
 ---
 
-**Senast uppdaterad:** 2025-01-27
+**Senast uppdaterad:** 2025-11-30
+
+---
+
+## Produktionsmiljö - Snabbreferens
+
+### Infrastruktur
+
+| Komponent | Plats | Beskrivning |
+|-----------|-------|-------------|
+| **Produktionsserver** | Synology NAS "mittemellan" | Docker host för alla containers |
+| **Tailscale IP** | `100.94.213.121` | Intern Tailscale-adress |
+| **Publik URL** | `https://mittemellan.tail00c71f.ts.net/` | Tailscale Funnel-exponerad URL |
+| **Utvecklingsmaskin** | Windows PC "mackanspc" | Lokal utveckling och build |
+
+### Portar (Produktion)
+
+| Service | Intern Port | Extern Port | Beskrivning |
+|---------|-------------|-------------|-------------|
+| Frontend | 80 (nginx) | 3001 | React SPA via Tailscale Funnel |
+| Backend API | 8000 | - | FastAPI, endast internt |
+| InfluxDB | 8086 | - | Tidsserie-databas, endast internt |
+
+### Deploy till Produktion
+
+**Från utvecklingsmaskinen (Windows):**
+
+```bash
+# 1. Bygg Docker images lokalt
+cd C:\Users\marcu\OneDrive\Dokument\AQI
+docker-compose build --no-cache
+
+# 2. Exportera images till tar-filer
+docker save aqi-frontend:latest -o frontend.tar
+docker save aqi-backend:latest -o backend.tar
+docker save aqi-collector:latest -o collector.tar
+
+# 3. Kopiera till Synology via Tailscale
+scp *.tar admin@100.94.213.121:/volume1/docker/aqi/
+
+# 4. SSH till Synology och ladda images
+ssh admin@100.94.213.121
+cd /volume1/docker/aqi
+docker load -i frontend.tar
+docker load -i backend.tar
+docker load -i collector.tar
+
+# 5. Starta om containers
+docker-compose down
+docker-compose up -d
+```
+
+**Alternativ: Git pull på Synology (om git finns installerat):**
+
+```bash
+ssh admin@100.94.213.121
+cd /volume1/docker/aqi
+git pull origin main
+docker-compose build --no-cache
+docker-compose down && docker-compose up -d
+```
+
+### Tailscale Funnel Setup
+
+Tailscale Funnel exponerar frontend på port 3001 till den publika URL:en.
+
+```bash
+# På Synology NAS
+tailscale funnel --bg 3001
+
+# Verifiera status
+tailscale funnel status
+```
+
+### Verifiering efter Deploy
+
+```bash
+# 1. Kontrollera att alla containers körs
+docker ps --filter "name=halo"
+
+# 2. Testa backend health
+curl http://localhost:8000/health
+
+# 3. Testa frontend via publik URL
+curl -I https://mittemellan.tail00c71f.ts.net/
+
+# 4. Kontrollera loggar
+docker-compose logs --tail 50
+```
+
+### Rollback
+
+Vid problem, rulla tillbaka till föregående version:
+
+```bash
+# På Synology
+cd /volume1/docker/aqi
+git checkout <previous-commit-hash>
+docker-compose build --no-cache
+docker-compose down && docker-compose up -d
+```
+
+---
+
+## Viktiga Sökvägar
+
+| Beskrivning | Sökväg |
+|-------------|--------|
+| Projekt (Windows) | `C:\Users\marcu\OneDrive\Dokument\AQI` |
+| Projekt (Synology) | `/volume1/docker/aqi` |
+| Docker volumes | `/volume1/docker/aqi/volumes/` |
+| InfluxDB data | `influxdb-data` Docker volume |
+| Loggar | `docker-compose logs <service>` |
 
 
