@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Card } from '../components/ui/Card';
 
-type DocSection = 'overview' | 'sensors' | 'monitoring' | 'occupancy' | 'alerts' | 'api' | 'deployment';
+type DocSection = 'overview' | 'sensors' | 'monitoring' | 'occupancy' | 'alerts' | 'api' | 'deployment' | 'licenses';
 
 export const Documentation: React.FC = () => {
   const [activeSection, setActiveSection] = useState<DocSection>('overview');
@@ -17,6 +17,7 @@ export const Documentation: React.FC = () => {
     { id: 'alerts', title: 'Larm & Varningar' },
     { id: 'api', title: 'API-referens' },
     { id: 'deployment', title: 'Driftsattning' },
+    { id: 'licenses', title: 'Licenser' },
   ];
 
   return (
@@ -79,6 +80,7 @@ export const Documentation: React.FC = () => {
             {activeSection === 'alerts' && <AlertsSection />}
             {activeSection === 'api' && <ApiSection />}
             {activeSection === 'deployment' && <DeploymentSection />}
+            {activeSection === 'licenses' && <LicensesSection />}
           </Card>
         </main>
       </div>
@@ -491,5 +493,95 @@ docker-compose ps`}</CodeBlock>
     </SubSection>
   </>
 );
+
+interface LicenseInfo {
+  name: string;
+  version?: string;
+  license: string;
+  url?: string;
+  description: string;
+  commercialUse: boolean;
+}
+
+const LicensesSection: React.FC = () => {
+  const frontendLicenses: LicenseInfo[] = [
+    { name: 'React', version: '18.x', license: 'MIT', url: 'https://github.com/facebook/react', description: 'JavaScript-bibliotek för användargränssnitt', commercialUse: true },
+    { name: 'TypeScript', version: '5.x', license: 'Apache-2.0', url: 'https://github.com/microsoft/TypeScript', description: 'Typsäker superset av JavaScript', commercialUse: true },
+    { name: 'Vite', version: '5.x', license: 'MIT', url: 'https://github.com/vitejs/vite', description: 'Snabb byggverktyg', commercialUse: true },
+    { name: 'Recharts', version: '2.x', license: 'MIT', url: 'https://github.com/recharts/recharts', description: 'Diagrambibliotek för React', commercialUse: true },
+    { name: 'React Router', version: '6.x', license: 'MIT', url: 'https://github.com/remix-run/react-router', description: 'Routing för React', commercialUse: true },
+  ];
+
+  const backendLicenses: LicenseInfo[] = [
+    { name: 'Python', version: '3.11+', license: 'PSF', url: 'https://www.python.org/', description: 'Programmeringsspråk', commercialUse: true },
+    { name: 'FastAPI', version: '0.100+', license: 'MIT', url: 'https://github.com/tiangolo/fastapi', description: 'Web-ramverk för Python', commercialUse: true },
+    { name: 'Pydantic', version: '2.x', license: 'MIT', url: 'https://github.com/pydantic/pydantic', description: 'Datavalidering', commercialUse: true },
+    { name: 'InfluxDB Client', version: '1.x', license: 'MIT', url: 'https://github.com/influxdata/influxdb-client-python', description: 'Python-klient för InfluxDB', commercialUse: true },
+    { name: 'Uvicorn', version: '0.20+', license: 'BSD-3-Clause', url: 'https://github.com/encode/uvicorn', description: 'ASGI web server', commercialUse: true },
+  ];
+
+  const infrastructureLicenses: LicenseInfo[] = [
+    { name: 'InfluxDB', version: '2.x', license: 'MIT', url: 'https://github.com/influxdata/influxdb', description: 'Tidsserie-databas', commercialUse: true },
+    { name: 'Docker', version: '24.x', license: 'Apache-2.0', url: 'https://github.com/docker/docker-ce', description: 'Containerisering', commercialUse: true },
+    { name: 'Nginx', version: '1.25+', license: 'BSD-2-Clause', url: 'https://nginx.org/', description: 'Webbserver och proxy', commercialUse: true },
+  ];
+
+  const LicenseTable: React.FC<{ licenses: LicenseInfo[]; title: string }> = ({ licenses, title }) => (
+    <div style={{ marginBottom: 'var(--spacing-xl)' }}>
+      <h3 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--spacing-md)' }}>{title}</h3>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-size-sm)' }}>
+        <thead>
+          <tr style={{ backgroundColor: 'var(--color-surface)' }}>
+            <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Komponent</th>
+            <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Version</th>
+            <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Licens</th>
+            <th style={{ padding: 'var(--spacing-sm)', textAlign: 'center', borderBottom: '2px solid var(--color-border)' }}>Kommersiellt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {licenses.map((lib) => (
+            <tr key={lib.name}>
+              <td style={{ padding: 'var(--spacing-sm)', borderBottom: '1px solid var(--color-border)' }}>
+                {lib.url ? <a href={lib.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>{lib.name}</a> : lib.name}
+                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>{lib.description}</div>
+              </td>
+              <td style={{ padding: 'var(--spacing-sm)', borderBottom: '1px solid var(--color-border)', fontFamily: 'monospace' }}>{lib.version || '-'}</td>
+              <td style={{ padding: 'var(--spacing-sm)', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: 'var(--font-size-xs)', fontWeight: 600, backgroundColor: lib.license === 'MIT' ? '#dcfce7' : '#dbeafe', color: lib.license === 'MIT' ? '#166534' : '#1e40af' }}>{lib.license}</span>
+              </td>
+              <td style={{ padding: 'var(--spacing-sm)', borderBottom: '1px solid var(--color-border)', textAlign: 'center', color: '#166534' }}>&#10003;</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <>
+      <SectionTitle>Licenser</SectionTitle>
+      <SubSection title="Sammanfattning">
+        <div style={{ padding: 'var(--spacing-md)', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(34, 197, 94, 0.3)', marginBottom: 'var(--spacing-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
+            <span style={{ color: '#166534', fontSize: 'var(--font-size-xl)' }}>&#10003;</span>
+            <strong style={{ color: '#166534' }}>Alla komponenter tillåter kommersiellt bruk</strong>
+          </div>
+          <p style={{ margin: 0, fontSize: 'var(--font-size-sm)' }}>
+            MIT, Apache-2.0, BSD och PSF-licenser tillåter fri användning i kommersiella produkter utan copyleft-krav.
+          </p>
+        </div>
+      </SubSection>
+      <LicenseTable licenses={frontendLicenses} title="Frontend" />
+      <LicenseTable licenses={backendLicenses} title="Backend" />
+      <LicenseTable licenses={infrastructureLicenses} title="Infrastruktur" />
+      <SubSection title="Licenstyper">
+        <p><strong>MIT:</strong> Mycket tillåtande. Kräver endast att upphovsrättsnotisen bevaras.</p>
+        <p><strong>Apache-2.0:</strong> Tillåtande med patentskydd. Dokumentera ändringar.</p>
+        <p><strong>BSD:</strong> Tillåtande liknande MIT. Bevara upphovsrättsnotis.</p>
+        <p><strong>PSF:</strong> Python Software Foundation. Fri kommersiell användning.</p>
+      </SubSection>
+    </>
+  );
+};
 
 export default Documentation;

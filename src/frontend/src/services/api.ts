@@ -217,6 +217,12 @@ export interface OccupancyStatus {
       contribution: number;
       thresholds: { high: number; medium: number; baseline: number };
     };
+    pir?: {
+      value: number | null;
+      unit: string;
+      contribution: number;
+      thresholds: { high: number; medium: number; baseline: number };
+    };
     beacon: {
       present: boolean;
       count: number;
@@ -226,6 +232,7 @@ export interface OccupancyStatus {
   score_breakdown?: {
     co2: number;
     audio: number;
+    pir: number;
     beacon: number;
   };
   error?: string;

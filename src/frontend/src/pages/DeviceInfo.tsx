@@ -63,6 +63,30 @@ interface SystemStatus {
   timestamp: string;
 }
 
+interface SystemStats {
+  sensors: {
+    total_count: number;
+    categories: Record<string, number>;
+  };
+  software: {
+    python_version: string;
+    fastapi_version: string;
+    pydantic_version: string;
+    influxdb_client_version: string;
+  };
+  deployment: {
+    docker: boolean;
+    hostname: string;
+    environment: string;
+  };
+  configuration: {
+    halo_ip: string;
+    influxdb_url: string;
+    poll_interval: number;
+  };
+  timestamp: string;
+}
+
 const TOKEN_KEY = 'tekniklokaler_auth_token';
 
 const fetchWithAuth = async (url: string) => {
@@ -83,6 +107,7 @@ const fetchWithAuth = async (url: string) => {
 export const DeviceInfo: React.FC = () => {
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfoData | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
   const [rawData, setRawData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,10 +119,11 @@ export const DeviceInfo: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Hämta systemstatus och enhetsinformation parallellt
-        const [statusRes, infoRes] = await Promise.allSettled([
+        // Hämta systemstatus, enhetsinformation och stats parallellt
+        const [statusRes, infoRes, statsRes] = await Promise.allSettled([
           fetchWithAuth('/api/system/status'),
           fetchWithAuth('/api/system/device/info'),
+          fetchWithAuth('/api/system/stats'),
         ]);
 
         if (statusRes.status === 'fulfilled') {
@@ -109,6 +135,10 @@ export const DeviceInfo: React.FC = () => {
         } else {
           // Device info misslyckades, men vi kan fortfarande visa systemstatus
           console.warn('Device info fetch failed:', infoRes.reason);
+        }
+
+        if (statsRes.status === 'fulfilled') {
+          setSystemStats(statsRes.value);
         }
 
       } catch (err) {
@@ -535,6 +565,103 @@ export const DeviceInfo: React.FC = () => {
                 </div>
               </Card>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Systemstatistik */}
+      {systemStats && (
+        <div style={{ marginBottom: 'var(--spacing-xl)' }}>
+          <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
+            Systemstatistik
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
+            {/* Sensorer */}
+            <Card padding="md">
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-sm)' }}>
+                Sensorstatistik
+              </h3>
+              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-primary)', marginBottom: 'var(--spacing-sm)' }}>
+                {systemStats.sensors.total_count} sensorer
+              </div>
+              <div style={{ fontSize: 'var(--font-size-sm)' }}>
+                {Object.entries(systemStats.sensors.categories).map(([category, count]) => (
+                  <div key={category} style={{ marginBottom: 'var(--spacing-xs)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>{category}</span>
+                    <span style={{ fontWeight: 500 }}>{count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Programvaruversioner */}
+            <Card padding="md">
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-sm)' }}>
+                Programvara
+              </h3>
+              <div style={{ fontSize: 'var(--font-size-sm)' }}>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Python: </span>
+                  <span style={{ fontFamily: 'monospace' }}>{systemStats.software.python_version}</span>
+                </div>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>FastAPI: </span>
+                  <span style={{ fontFamily: 'monospace' }}>{systemStats.software.fastapi_version}</span>
+                </div>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Pydantic: </span>
+                  <span style={{ fontFamily: 'monospace' }}>{systemStats.software.pydantic_version}</span>
+                </div>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>InfluxDB Client: </span>
+                  <span style={{ fontFamily: 'monospace' }}>{systemStats.software.influxdb_client_version}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Deployment */}
+            <Card padding="md">
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-sm)' }}>
+                Deployment
+              </h3>
+              <div style={{ fontSize: 'var(--font-size-sm)' }}>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Docker: </span>
+                  <span style={{ color: systemStats.deployment.docker ? '#166534' : '#991b1b', fontWeight: 500 }}>
+                    {systemStats.deployment.docker ? 'Ja' : 'Nej'}
+                  </span>
+                </div>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Värdnamn: </span>
+                  <span style={{ fontFamily: 'monospace' }}>{systemStats.deployment.hostname}</span>
+                </div>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Miljö: </span>
+                  <span style={{ textTransform: 'uppercase', fontWeight: 500 }}>{systemStats.deployment.environment}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Konfiguration */}
+            <Card padding="md">
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-sm)' }}>
+                Konfiguration
+              </h3>
+              <div style={{ fontSize: 'var(--font-size-sm)' }}>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Halo IP: </span>
+                  <span style={{ fontFamily: 'monospace' }}>{systemStats.configuration.halo_ip}</span>
+                </div>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>InfluxDB: </span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>{systemStats.configuration.influxdb_url}</span>
+                </div>
+                <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Poll-intervall: </span>
+                  <span>{systemStats.configuration.poll_interval}s</span>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       )}

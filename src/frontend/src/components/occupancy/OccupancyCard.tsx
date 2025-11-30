@@ -242,6 +242,17 @@ export const OccupancyCard: React.FC<OccupancyCardProps> = ({
                   thresholds={status.details.audio.thresholds}
                 />
 
+                {/* PIR */}
+                {status.details.pir && (
+                  <DetailRow
+                    label="PIR (rörelse)"
+                    value={status.details.pir.value}
+                    unit=""
+                    contribution={status.details.pir.contribution}
+                    thresholds={status.details.pir.thresholds}
+                  />
+                )}
+
                 {/* Beacon */}
                 <div style={{
                   display: 'flex',

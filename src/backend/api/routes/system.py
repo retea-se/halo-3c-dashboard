@@ -284,3 +284,61 @@ async def get_device_network_info():
     except Exception as e:
         logger.error(f"Failed to get network info: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stats")
+async def get_system_stats():
+    """
+    Hämta systemstatistik och metadata för dashboard
+
+    Returns:
+        Statistik om sensorer, versioner, deployment info
+    """
+    import sys
+    import socket
+    import json
+    from pathlib import Path
+
+    stats = {
+        "sensors": {
+            "total_count": 0,
+            "categories": {},
+        },
+        "software": {
+            "python_version": sys.version.split()[0],
+            "fastapi_version": "0.104.1",
+            "pydantic_version": "2.5.2",
+            "influxdb_client_version": "1.38.0",
+        },
+        "deployment": {
+            "docker": os.path.exists("/.dockerenv"),
+            "hostname": socket.gethostname(),
+            "environment": os.getenv("ENVIRONMENT", "production"),
+        },
+        "configuration": {
+            "halo_ip": os.getenv("HALO_IP", "not_configured"),
+            "influxdb_url": os.getenv("INFLUXDB_URL", "http://influxdb:8086"),
+            "poll_interval": int(os.getenv("POLL_INTERVAL", "30")),
+        },
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+    # Läs sensormetadata för statistik
+    try:
+        metadata_path = Path(__file__).parent.parent.parent / "data" / "sensor_metadata.json"
+        if metadata_path.exists():
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+                sensors = metadata.get("sensors", {})
+                stats["sensors"]["total_count"] = len(sensors)
+
+                # Räkna per kategori
+                categories = {}
+                for sensor_id, sensor_info in sensors.items():
+                    category = sensor_info.get("category", "unknown")
+                    categories[category] = categories.get(category, 0) + 1
+                stats["sensors"]["categories"] = categories
+    except Exception as e:
+        logger.warning(f"Could not load sensor metadata: {e}")
+
+    return stats

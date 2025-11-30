@@ -25,6 +25,7 @@ class OccupancyService:
     - CO2-nivå > 600 ppm: +1 poäng
     - Ljudnivå > 55 dB: +2 poäng
     - Ljudnivå > 45 dB: +1 poäng
+    - PIR-rörelse detekterad: +4 poäng (direkt rörelseindikation)
     - BLE Beacon närvarande: +5 poäng (mest pålitlig)
 
     Tröskel för "occupied": >= 3 poäng
@@ -41,6 +42,11 @@ class OccupancyService:
     AUDIO_HIGH_THRESHOLD = 55     # dB - aktivitet
     AUDIO_MEDIUM_THRESHOLD = 45   # dB - möjlig närvaro
     AUDIO_BASELINE = 35           # dB - tyst rum
+
+    # PIR-trösklar (rörelsedetektering)
+    PIR_HIGH_THRESHOLD = 1        # Aktiv rörelse detekterad
+    PIR_MEDIUM_THRESHOLD = 0.5    # Möjlig rörelse
+    PIR_BASELINE = 0              # Ingen rörelse
 
     # Poängtrösklar
     OCCUPIED_THRESHOLD = 3
@@ -87,6 +93,7 @@ class OccupancyService:
         # Extrahera relevanta värden
         co2_value = self._extract_sensor_value(latest_values, ["co2sensor/co2", "co2sensor/co2fo"])
         audio_value = self._extract_sensor_value(latest_values, ["audsensor/sum"])
+        pir_value = self._extract_sensor_value(latest_values, ["pirsensor/signal", "pirsensor/val"])
 
         # Kolla BLE-beacons
         try:
@@ -104,6 +111,7 @@ class OccupancyService:
         score, score_breakdown = self._calculate_occupancy_score(
             co2_value=co2_value,
             audio_value=audio_value,
+            pir_value=pir_value,
             beacon_present=beacon_present
         )
 
@@ -146,6 +154,16 @@ class OccupancyService:
                         "high": self.AUDIO_HIGH_THRESHOLD,
                         "medium": self.AUDIO_MEDIUM_THRESHOLD,
                         "baseline": self.AUDIO_BASELINE,
+                    }
+                },
+                "pir": {
+                    "value": pir_value,
+                    "unit": "",
+                    "contribution": score_breakdown.get("pir", 0),
+                    "thresholds": {
+                        "high": self.PIR_HIGH_THRESHOLD,
+                        "medium": self.PIR_MEDIUM_THRESHOLD,
+                        "baseline": self.PIR_BASELINE,
                     }
                 },
                 "beacon": {
@@ -197,6 +215,7 @@ class OccupancyService:
         self,
         co2_value: Optional[float],
         audio_value: Optional[float],
+        pir_value: Optional[float],
         beacon_present: bool
     ) -> tuple[int, Dict[str, int]]:
         """
@@ -206,7 +225,7 @@ class OccupancyService:
             Tuple med (total_score, breakdown_dict)
         """
         score = 0
-        breakdown = {"co2": 0, "audio": 0, "beacon": 0}
+        breakdown = {"co2": 0, "audio": 0, "pir": 0, "beacon": 0}
 
         # CO2-poäng
         if co2_value is not None:
@@ -221,6 +240,13 @@ class OccupancyService:
                 breakdown["audio"] = 2
             elif audio_value >= self.AUDIO_MEDIUM_THRESHOLD:
                 breakdown["audio"] = 1
+
+        # PIR-poäng (rörelsedetektering)
+        if pir_value is not None:
+            if pir_value >= self.PIR_HIGH_THRESHOLD:
+                breakdown["pir"] = 4
+            elif pir_value >= self.PIR_MEDIUM_THRESHOLD:
+                breakdown["pir"] = 2
 
         # Beacon-poäng (högst prioritet)
         if beacon_present:
