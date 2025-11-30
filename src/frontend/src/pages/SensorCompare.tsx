@@ -14,6 +14,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  BarChart,
+  Bar,
 } from 'recharts';
 
 // Fallback-lista med alla kända sensorer (används om API inte returnerar sensorer)
@@ -68,6 +70,214 @@ interface SensorHistoryData {
   value: number;
 }
 
+// Tröskelvärden för sensorer (för att detektera överskridanden)
+const SENSOR_THRESHOLDS: Record<string, { warning: number; critical: number; direction: 'above' | 'below' }> = {
+  'audsensor/sum': { warning: 55, critical: 70, direction: 'above' },
+  'co2sensor/co2fo': { warning: 800, critical: 1200, direction: 'above' },
+  'co2sensor/co2': { warning: 800, critical: 1200, direction: 'above' },
+  'co2sensor/tvoc': { warning: 500, critical: 1000, direction: 'above' },
+  'htsensor/ctemp': { warning: 26, critical: 30, direction: 'above' },
+  'htsensor/humidity': { warning: 70, critical: 80, direction: 'above' },
+  'pmsensor/pm2p5conc': { warning: 25, critical: 50, direction: 'above' },
+  'pmsensor/pm10conc': { warning: 50, critical: 100, direction: 'above' },
+  'gassensor/co': { warning: 9, critical: 35, direction: 'above' },
+};
+
+// Trendanalys-typer
+interface TrendAnalysis {
+  slope: number;
+  intercept: number;
+  startY: number;
+  endY: number;
+  percentChange: number;
+  direction: 'up' | 'down' | 'stable';
+  strength: 'strong' | 'moderate' | 'weak';
+  description: string;
+}
+
+// Calculate linear regression for trendline with extended analysis
+const calculateTrendline = (data: any[], sensorId: string): TrendAnalysis | null => {
+  const validPoints = data.filter(d => d[sensorId] !== undefined).map((d, i) => ({
+    x: i,
+    y: d[sensorId] as number
+  }));
+
+  if (validPoints.length < 2) return null;
+
+  const n = validPoints.length;
+  const sumX = validPoints.reduce((sum, p) => sum + p.x, 0);
+  const sumY = validPoints.reduce((sum, p) => sum + p.y, 0);
+  const sumXY = validPoints.reduce((sum, p) => sum + p.x * p.y, 0);
+  const sumXX = validPoints.reduce((sum, p) => sum + p.x * p.x, 0);
+
+  const denominator = n * sumXX - sumX * sumX;
+  if (Math.abs(denominator) < 1e-10) return null;
+
+  const slope = (n * sumXY - sumX * sumY) / denominator;
+  const intercept = (sumY - slope * sumX) / n;
+  const startY = intercept;
+  const endY = slope * (n - 1) + intercept;
+
+  // Beräkna procentuell förändring
+  const avgY = sumY / n;
+  const percentChange = avgY !== 0 ? ((endY - startY) / Math.abs(avgY)) * 100 : 0;
+
+  // Bestäm trendriktning och styrka
+  let direction: 'up' | 'down' | 'stable';
+  let strength: 'strong' | 'moderate' | 'weak';
+
+  const absPercentChange = Math.abs(percentChange);
+  if (absPercentChange < 2) {
+    direction = 'stable';
+    strength = 'weak';
+  } else if (percentChange > 0) {
+    direction = 'up';
+    strength = absPercentChange > 15 ? 'strong' : absPercentChange > 5 ? 'moderate' : 'weak';
+  } else {
+    direction = 'down';
+    strength = absPercentChange > 15 ? 'strong' : absPercentChange > 5 ? 'moderate' : 'weak';
+  }
+
+  // Skapa beskrivning
+  let description: string;
+  if (direction === 'stable') {
+    description = 'Stabil';
+  } else {
+    const dirText = direction === 'up' ? 'Uppgående' : 'Nedgående';
+    const strengthText = strength === 'strong' ? 'stark' : strength === 'moderate' ? 'måttlig' : 'svag';
+    description = `${dirText} (${strengthText}, ${percentChange > 0 ? '+' : ''}${percentChange.toFixed(1)}%)`;
+  }
+
+  return {
+    slope,
+    intercept,
+    startY,
+    endY,
+    percentChange,
+    direction,
+    strength,
+    description
+  };
+};
+
+// Analysera ljudnivåtrend för varning
+interface SoundTrendWarning {
+  isWarning: boolean;
+  message: string;
+  severity: 'info' | 'warning' | 'critical';
+  avgIncrease: number;
+}
+
+const analyzeSoundTrend = (data: any[], _timeRangeHours: number): SoundTrendWarning | null => {
+  const soundValues = data
+    .filter(d => d['audsensor/sum'] !== undefined)
+    .map(d => d['audsensor/sum'] as number);
+
+  if (soundValues.length < 10) return null;
+
+  // Dela upp i början och slut för att jämföra
+  const firstQuarter = soundValues.slice(0, Math.floor(soundValues.length / 4));
+  const lastQuarter = soundValues.slice(-Math.floor(soundValues.length / 4));
+
+  const avgFirst = firstQuarter.reduce((a, b) => a + b, 0) / firstQuarter.length;
+  const avgLast = lastQuarter.reduce((a, b) => a + b, 0) / lastQuarter.length;
+  const avgIncrease = avgLast - avgFirst;
+
+  // Kontrollera om det finns en ihållande ökning
+  if (avgIncrease > 5 && avgLast > 50) {
+    return {
+      isWarning: true,
+      message: `Ljudnivån har ökat med ${avgIncrease.toFixed(1)} dB under perioden`,
+      severity: avgLast > 65 ? 'critical' : avgIncrease > 10 ? 'warning' : 'info',
+      avgIncrease
+    };
+  }
+
+  return null;
+};
+
+// Hitta tröskelöverskridanden i data
+interface ThresholdEvent {
+  timestamp: string;
+  sensorId: string;
+  sensorName: string;
+  value: number;
+  threshold: number;
+  type: 'exceeded' | 'returned';
+  severity: 'warning' | 'critical';
+}
+
+const findThresholdEvents = (
+  data: any[],
+  selectedSensors: string[],
+  sensorConfigs: Array<{ id: string; name: string; unit: string; color: string }>
+): ThresholdEvent[] => {
+  const events: ThresholdEvent[] = [];
+
+  selectedSensors.forEach(sensorId => {
+    const thresholds = SENSOR_THRESHOLDS[sensorId];
+    if (!thresholds) return;
+
+    const sensorConfig = sensorConfigs.find(s => s.id === sensorId);
+    if (!sensorConfig) return;
+
+    let wasExceeded = false;
+    let lastExceededLevel: 'warning' | 'critical' | null = null;
+
+    data.forEach((point) => {
+      const value = point[sensorId];
+      if (value === undefined) return;
+
+      const exceedsCritical = thresholds.direction === 'above'
+        ? value >= thresholds.critical
+        : value <= thresholds.critical;
+      const exceedsWarning = thresholds.direction === 'above'
+        ? value >= thresholds.warning
+        : value <= thresholds.warning;
+
+      if (exceedsCritical && lastExceededLevel !== 'critical') {
+        events.push({
+          timestamp: point.timestamp,
+          sensorId,
+          sensorName: sensorConfig.name,
+          value,
+          threshold: thresholds.critical,
+          type: 'exceeded',
+          severity: 'critical'
+        });
+        wasExceeded = true;
+        lastExceededLevel = 'critical';
+      } else if (exceedsWarning && !exceedsCritical && lastExceededLevel !== 'warning' && lastExceededLevel !== 'critical') {
+        events.push({
+          timestamp: point.timestamp,
+          sensorId,
+          sensorName: sensorConfig.name,
+          value,
+          threshold: thresholds.warning,
+          type: 'exceeded',
+          severity: 'warning'
+        });
+        wasExceeded = true;
+        lastExceededLevel = 'warning';
+      } else if (!exceedsWarning && wasExceeded) {
+        events.push({
+          timestamp: point.timestamp,
+          sensorId,
+          sensorName: sensorConfig.name,
+          value,
+          threshold: thresholds.warning,
+          type: 'returned',
+          severity: 'warning'
+        });
+        wasExceeded = false;
+        lastExceededLevel = null;
+      }
+    });
+  });
+
+  return events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+};
+
 export const SensorCompare: React.FC = () => {
   const { colors } = useTheme();
   const [selectedSensors, setSelectedSensors] = useState<string[]>(['htsensor/ctemp', 'htsensor/humidity']);
@@ -75,7 +285,14 @@ export const SensorCompare: React.FC = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [normalizeData, setNormalizeData] = useState(false);
+  const [showTrendline, setShowTrendline] = useState(false);
+  const [trendlines, setTrendlines] = useState<Record<string, TrendAnalysis>>({});
+  const [showEventChart, setShowEventChart] = useState(false);
+  const [eventData, setEventData] = useState<any[]>([]);
   const [availableSensors, setAvailableSensors] = useState<Array<{ id: string; name: string; unit: string; color: string }>>(FALLBACK_SENSORS);
+  const [soundWarning, setSoundWarning] = useState<SoundTrendWarning | null>(null);
+  const [thresholdEvents, setThresholdEvents] = useState<ThresholdEvent[]>([]);
+  const [showThresholdTimeline, setShowThresholdTimeline] = useState(false);
 
   // Hämta tillgängliga sensorer från senaste sensorvärden
   useEffect(() => {
@@ -197,13 +414,90 @@ export const SensorCompare: React.FC = () => {
         });
       }
 
+      // Calculate trendlines for each sensor
+      const newTrendlines: Record<string, TrendAnalysis> = {};
+      selectedSensors.forEach(sensorId => {
+        const trend = calculateTrendline(combinedData, sensorId);
+        if (trend) {
+          newTrendlines[sensorId] = trend;
+
+          // Add trendline data points to combinedData if showTrendline is enabled
+          if (showTrendline) {
+            const trendlineKey = `${sensorId}_trend`;
+            combinedData.forEach((point, i) => {
+              point[trendlineKey] = trend.intercept + trend.slope * i;
+            });
+          }
+        }
+      });
+      setTrendlines(newTrendlines);
+
+      // Analysera ljudnivåtrend
+      if (selectedSensors.includes('audsensor/sum')) {
+        const warning = analyzeSoundTrend(combinedData, timeRange);
+        setSoundWarning(warning);
+      } else {
+        setSoundWarning(null);
+      }
+
+      // Hitta tröskelöverskridanden
+      const events = findThresholdEvents(combinedData, selectedSensors, availableSensors);
+      setThresholdEvents(events);
+
       setChartData(combinedData);
     } catch (error) {
       console.error('Failed to load sensor data:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedSensors, timeRange, normalizeData]);
+  }, [selectedSensors, timeRange, normalizeData, showTrendline]);
+
+  // Load event data for activity chart
+  useEffect(() => {
+    const loadEventData = async () => {
+      if (!showEventChart) return;
+
+      try {
+        const toTime = new Date().toISOString();
+        const fromTime = new Date(Date.now() - timeRange * 60 * 60 * 1000).toISOString();
+        const events = await apiService.getEvents({ from: fromTime, to: toTime });
+
+        // Aggregate events by hour/day depending on time range
+        const bucketSize = timeRange <= 24 ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 1 hour or 1 day
+        const buckets = new Map<string, { timestamp: string; occupancy: number; vibration: number; total: number }>();
+
+        events.forEach((event: any) => {
+          const eventTime = new Date(event.timestamp).getTime();
+          const bucketTime = new Date(Math.floor(eventTime / bucketSize) * bucketSize);
+          const bucketKey = bucketTime.toISOString();
+
+          if (!buckets.has(bucketKey)) {
+            buckets.set(bucketKey, { timestamp: bucketKey, occupancy: 0, vibration: 0, total: 0 });
+          }
+
+          const bucket = buckets.get(bucketKey)!;
+          bucket.total++;
+
+          // Categorize events
+          const eventType = (event.type || '').toLowerCase();
+          if (eventType.includes('occupancy') || eventType.includes('presence') || eventType.includes('beacon')) {
+            bucket.occupancy++;
+          } else if (eventType.includes('vibration') || eventType.includes('tamper') || eventType.includes('movement')) {
+            bucket.vibration++;
+          }
+        });
+
+        const sortedData = Array.from(buckets.values())
+          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        setEventData(sortedData);
+      } catch (error) {
+        console.error('Failed to load event data:', error);
+      }
+    };
+
+    loadEventData();
+  }, [showEventChart, timeRange]);
 
   useEffect(() => {
     loadData();
@@ -306,7 +600,7 @@ export const SensorCompare: React.FC = () => {
               </div>
             </div>
 
-            {/* Normalisering */}
+            {/* Visningsalternativ */}
             <div style={{ flex: '0 0 auto' }}>
               <h3
                 style={{
@@ -318,27 +612,111 @@ export const SensorCompare: React.FC = () => {
               >
                 Visning
               </h3>
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--spacing-xs)',
-                  cursor: 'pointer',
-                  fontSize: 'var(--font-size-sm)',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={normalizeData}
-                  onChange={(e) => setNormalizeData(e.target.checked)}
-                  style={{ cursor: 'pointer' }}
-                />
-                Normalisera (0-100%)
-              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-xs)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={normalizeData}
+                    onChange={(e) => setNormalizeData(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  Normalisera (0-100%)
+                </label>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-xs)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={showTrendline}
+                    onChange={(e) => setShowTrendline(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  Visa trendlinje
+                </label>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-xs)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={showEventChart}
+                    onChange={(e) => setShowEventChart(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  Visa aktivitetshistorik
+                </label>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-xs)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--font-size-sm)',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={showThresholdTimeline}
+                    onChange={(e) => setShowThresholdTimeline(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  Visa tröskel-händelser
+                </label>
+              </div>
             </div>
           </div>
         </div>
       </Card>
+
+      {/* Ljudvarning */}
+      {soundWarning && soundWarning.isWarning && (
+        <Card padding="md" style={{
+          marginBottom: 'var(--spacing-md)',
+          backgroundColor: soundWarning.severity === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
+                          soundWarning.severity === 'warning' ? 'rgba(245, 158, 11, 0.1)' :
+                          'rgba(59, 130, 246, 0.1)',
+          border: `1px solid ${soundWarning.severity === 'critical' ? '#ef4444' :
+                               soundWarning.severity === 'warning' ? '#f59e0b' : '#3b82f6'}`
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <span style={{ fontSize: '20px' }}>
+              {soundWarning.severity === 'critical' ? '!!' : soundWarning.severity === 'warning' ? '!' : 'i'}
+            </span>
+            <div>
+              <div style={{
+                fontWeight: 600,
+                color: soundWarning.severity === 'critical' ? '#ef4444' :
+                       soundWarning.severity === 'warning' ? '#f59e0b' : '#3b82f6'
+              }}>
+                {soundWarning.severity === 'critical' ? 'Kritisk ljudvarning' :
+                 soundWarning.severity === 'warning' ? 'Ljudvarning' : 'Ljudobservation'}
+              </div>
+              <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
+                {soundWarning.message}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Graf */}
       <Card padding="sm">
@@ -354,7 +732,7 @@ export const SensorCompare: React.FC = () => {
               color: 'var(--color-text-secondary)',
             }}
           >
-            Valj minst en sensor
+            Välj minst en sensor
           </div>
         ) : chartData.length === 0 ? (
           <div
@@ -364,7 +742,7 @@ export const SensorCompare: React.FC = () => {
               color: 'var(--color-text-secondary)',
             }}
           >
-            Ingen data for vald tidsperiod
+            Ingen data för vald tidsperiod
           </div>
         ) : (
           <div style={{ width: '100%', height: 'min(500px, 60vh)' }}>
@@ -426,18 +804,222 @@ export const SensorCompare: React.FC = () => {
                     />
                   );
                 })}
+                {/* Trendlines */}
+                {showTrendline && selectedSensors.map((sensorId) => {
+                  const sensor = availableSensors.find((s) => s.id === sensorId);
+                  const trendData = trendlines[sensorId];
+                  if (!sensor || !trendData || chartData.length < 2) return null;
+
+                  // Create trendline data points (start and end)
+                  const trendlineKey = `${sensorId}_trend`;
+                  return (
+                    <Line
+                      key={trendlineKey}
+                      type="linear"
+                      dataKey={trendlineKey}
+                      name={`${sensor.name} (trend)`}
+                      stroke={sensor.color}
+                      strokeWidth={2}
+                      strokeDasharray="8 4"
+                      dot={false}
+                      legendType="none"
+                      connectNulls
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </div>
         )}
       </Card>
 
-      {/* Info om valda sensorer */}
+      {/* Aktivitetshistorik (events) */}
+      {showEventChart && (
+        <Card padding="sm" style={{ marginTop: 'var(--spacing-md)' }}>
+          <h3 style={{
+            fontSize: 'var(--font-size-sm)',
+            fontWeight: 600,
+            marginBottom: 'var(--spacing-sm)',
+            color: 'var(--color-text-secondary)'
+          }}>
+            Aktivitetshistorik (händelser per {timeRange <= 24 ? 'timme' : 'dag'})
+          </h3>
+          {eventData.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: 'var(--spacing-lg)',
+              color: 'var(--color-text-secondary)'
+            }}>
+              Inga händelser under vald period
+            </div>
+          ) : (
+            <div style={{ width: '100%', height: '200px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={eventData} margin={{ top: 5, right: 30, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickFormatter={formatXAxis}
+                    stroke={colors.text.secondary}
+                    style={{ fontSize: '11px' }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    stroke={colors.text.secondary}
+                    style={{ fontSize: '11px' }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: colors.surface,
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '12px',
+                    }}
+                    labelFormatter={(label) => {
+                      const date = new Date(label);
+                      return date.toLocaleString('sv-SE');
+                    }}
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="occupancy"
+                    name="Närvaro/besök"
+                    fill="#22c55e"
+                    stackId="a"
+                    radius={[2, 2, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="vibration"
+                    name="Vibrationer/rörelse"
+                    fill="#f59e0b"
+                    stackId="a"
+                    radius={[2, 2, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="total"
+                    name="Totalt händelser"
+                    fill="#6366f1"
+                    opacity={0.3}
+                    radius={[2, 2, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tröskel-händelsetidslinje */}
+      {showThresholdTimeline && (
+        <Card padding="sm" style={{ marginTop: 'var(--spacing-md)' }}>
+          <h3 style={{
+            fontSize: 'var(--font-size-sm)',
+            fontWeight: 600,
+            marginBottom: 'var(--spacing-sm)',
+            color: 'var(--color-text-secondary)'
+          }}>
+            Tröskel-händelser (när värden överskrider gränsvärden)
+          </h3>
+          {thresholdEvents.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: 'var(--spacing-lg)',
+              color: 'var(--color-text-secondary)'
+            }}>
+              Inga tröskelöverskridanden under vald period
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              {/* Tidslinje */}
+              <div style={{
+                position: 'relative',
+                minHeight: '80px',
+                padding: 'var(--spacing-md) 0',
+              }}>
+                {/* Tidslinjelinje */}
+                <div style={{
+                  position: 'absolute',
+                  left: '0',
+                  right: '0',
+                  top: '50%',
+                  height: '2px',
+                  backgroundColor: 'var(--color-border)',
+                }} />
+
+                {/* Händelser */}
+                <div style={{
+                  display: 'flex',
+                  gap: 'var(--spacing-xs)',
+                  flexWrap: 'wrap',
+                  position: 'relative',
+                }}>
+                  {thresholdEvents.slice(0, 20).map((event, idx) => {
+                    const sensorConfig = availableSensors.find(s => s.id === event.sensorId);
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          padding: 'var(--spacing-xs)',
+                          backgroundColor: event.type === 'exceeded'
+                            ? (event.severity === 'critical' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)')
+                            : 'rgba(34, 197, 94, 0.15)',
+                          border: `1px solid ${event.type === 'exceeded'
+                            ? (event.severity === 'critical' ? '#ef4444' : '#f59e0b')
+                            : '#22c55e'}`,
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: 'var(--font-size-xs)',
+                          minWidth: '100px',
+                        }}
+                        title={`${event.sensorName}: ${event.value.toFixed(1)} (tröskel: ${event.threshold})`}
+                      >
+                        <div style={{
+                          fontWeight: 600,
+                          color: event.type === 'exceeded'
+                            ? (event.severity === 'critical' ? '#ef4444' : '#f59e0b')
+                            : '#22c55e',
+                        }}>
+                          {event.type === 'exceeded'
+                            ? (event.severity === 'critical' ? 'KRITISK' : 'VARNING')
+                            : 'OK'}
+                        </div>
+                        <div style={{
+                          color: sensorConfig?.color || 'var(--color-text-secondary)',
+                          fontWeight: 500,
+                        }}>
+                          {event.sensorName}
+                        </div>
+                        <div style={{ color: 'var(--color-text-tertiary)' }}>
+                          {new Date(event.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {thresholdEvents.length > 20 && (
+                    <div style={{
+                      padding: 'var(--spacing-sm)',
+                      color: 'var(--color-text-secondary)',
+                      fontSize: 'var(--font-size-xs)',
+                    }}>
+                      +{thresholdEvents.length - 20} fler...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Info om valda sensorer med trendindikator */}
       {selectedSensors.length > 0 && (
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
             gap: 'var(--spacing-md)',
             marginTop: 'var(--spacing-lg)',
           }}
@@ -449,23 +1031,62 @@ export const SensorCompare: React.FC = () => {
             // Hitta senaste värdet
             const latestData = [...chartData].reverse().find((d) => d[sensorId] !== undefined);
             const latestValue = latestData?.[sensorId];
+            const trend = trendlines[sensorId];
+
+            // Trendpil och färg
+            const getTrendArrow = () => {
+              if (!trend) return null;
+              if (trend.direction === 'up') {
+                return { arrow: '\u2191', color: trend.strength === 'strong' ? '#ef4444' : trend.strength === 'moderate' ? '#f59e0b' : '#6b7280' };
+              } else if (trend.direction === 'down') {
+                return { arrow: '\u2193', color: trend.strength === 'strong' ? '#22c55e' : trend.strength === 'moderate' ? '#3b82f6' : '#6b7280' };
+              }
+              return { arrow: '\u2194', color: '#6b7280' };
+            };
+            const trendArrow = getTrendArrow();
 
             return (
               <Card key={sensorId} padding="sm">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)' }}>
                   <div
                     style={{
                       width: '12px',
                       height: '12px',
                       borderRadius: '50%',
                       backgroundColor: sensor.color,
+                      marginTop: '4px',
                     }}
                   />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>{sensor.name}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                      <span style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>{sensor.name}</span>
+                      {trendArrow && (
+                        <span style={{
+                          fontSize: 'var(--font-size-lg)',
+                          fontWeight: 700,
+                          color: trendArrow.color,
+                          lineHeight: 1,
+                        }}>
+                          {trendArrow.arrow}
+                        </span>
+                      )}
+                    </div>
                     {latestValue !== undefined && (
                       <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-xs)' }}>
                         Senaste: {latestValue.toFixed(1)} {normalizeData ? '%' : sensor.unit}
+                      </div>
+                    )}
+                    {trend && (
+                      <div style={{
+                        fontSize: 'var(--font-size-xs)',
+                        color: trend.direction === 'up'
+                          ? (trend.strength === 'strong' ? '#ef4444' : trend.strength === 'moderate' ? '#f59e0b' : 'var(--color-text-tertiary)')
+                          : trend.direction === 'down'
+                          ? (trend.strength === 'strong' ? '#22c55e' : trend.strength === 'moderate' ? '#3b82f6' : 'var(--color-text-tertiary)')
+                          : 'var(--color-text-tertiary)',
+                        marginTop: '2px',
+                      }}>
+                        {trend.description}
                       </div>
                     )}
                   </div>

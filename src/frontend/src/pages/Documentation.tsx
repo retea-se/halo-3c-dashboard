@@ -4,19 +4,20 @@
 import React, { useState } from 'react';
 import { Card } from '../components/ui/Card';
 
-type DocSection = 'overview' | 'sensors' | 'monitoring' | 'occupancy' | 'alerts' | 'api' | 'deployment' | 'licenses';
+type DocSection = 'overview' | 'sensors' | 'graphs' | 'monitoring' | 'occupancy' | 'alerts' | 'api' | 'deployment' | 'licenses';
 
 export const Documentation: React.FC = () => {
   const [activeSection, setActiveSection] = useState<DocSection>('overview');
 
   const sections: { id: DocSection; title: string }[] = [
-    { id: 'overview', title: 'Oversikt' },
+    { id: 'overview', title: 'Översikt' },
     { id: 'sensors', title: 'Sensorer' },
-    { id: 'monitoring', title: 'Systemovervakning' },
-    { id: 'occupancy', title: 'Narvarodetektion' },
+    { id: 'graphs', title: 'Grafer & Analys' },
+    { id: 'monitoring', title: 'Systemövervakning' },
+    { id: 'occupancy', title: 'Närvarodetektion' },
     { id: 'alerts', title: 'Larm & Varningar' },
     { id: 'api', title: 'API-referens' },
-    { id: 'deployment', title: 'Driftsattning' },
+    { id: 'deployment', title: 'Driftsättning' },
     { id: 'licenses', title: 'Licenser' },
   ];
 
@@ -75,6 +76,7 @@ export const Documentation: React.FC = () => {
           <Card padding="lg">
             {activeSection === 'overview' && <OverviewSection />}
             {activeSection === 'sensors' && <SensorsSection />}
+            {activeSection === 'graphs' && <GraphsSection />}
             {activeSection === 'monitoring' && <MonitoringSection />}
             {activeSection === 'occupancy' && <OccupancySection />}
             {activeSection === 'alerts' && <AlertsSection />}
@@ -182,7 +184,11 @@ const SensorsSection: React.FC = () => (
 
     <SubSection title="Halo 3C Multi-sensor">
       <p style={{ marginBottom: 'var(--spacing-md)' }}>
-        Halo 3C är en avancerad multi-sensor designad för övervakning av inomhusmiljö.
+        Halo 3C är en avancerad multi-sensor från IPVideo Corporation, designad för
+        övervakning av inomhusmiljö i känsliga utrymmen. Sensorn är monterad i taket
+        och samlar in ett brett spektrum av miljödata var 10:e sekund.
+      </p>
+      <p style={{ marginBottom: 'var(--spacing-md)' }}>
         Den samlar in följande mätvärden:
       </p>
       <table style={{
@@ -228,6 +234,88 @@ const SensorsSection: React.FC = () => (
         <li><strong>2-3:</strong> Måttlig luftkvalitet</li>
         <li><strong>3-4:</strong> Dålig luftkvalitet</li>
         <li><strong>4-5:</strong> Mycket dålig luftkvalitet</li>
+      </ul>
+    </SubSection>
+  </>
+);
+
+const GraphsSection: React.FC = () => (
+  <>
+    <SectionTitle>Grafer & Analys</SectionTitle>
+
+    <SubSection title="Jämför sensorer">
+      <p style={{ marginBottom: 'var(--spacing-md)' }}>
+        Under "Grafer" kan du jämföra flera sensorvärden i samma diagram. Välj de
+        sensorer du vill analysera och en tidsperiod. Systemet hämtar historiska
+        data och presenterar dem i en interaktiv graf.
+      </p>
+      <ul style={{ paddingLeft: 'var(--spacing-lg)' }}>
+        <li><strong>Normalisera:</strong> Skalar alla värden till 0-100% för enklare jämförelse</li>
+        <li><strong>Trendlinje:</strong> Visar linjär trend med streckad linje</li>
+        <li><strong>Aktivitetshistorik:</strong> Stapeldiagram med händelser per timme/dag</li>
+        <li><strong>Tröskel-händelser:</strong> Visar när värden överskridit gränsvärden</li>
+      </ul>
+    </SubSection>
+
+    <SubSection title="Trendanalys">
+      <p style={{ marginBottom: 'var(--spacing-md)' }}>
+        Systemet beräknar automatiskt trender för varje vald sensor och visar detta
+        med tydliga indikatorer:
+      </p>
+      <CodeBlock>{`Trendindikatorer:
+────────────────────────────────────────
+↑  Uppgående trend (rött = stark, orange = måttlig)
+↓  Nedgående trend (grönt = stark, blått = måttlig)
+↔  Stabil (grått)
+
+Trendstyrka baseras på procentuell förändring:
+  > 15%  →  Stark trend
+  5-15%  →  Måttlig trend
+  < 5%   →  Svag/stabil trend`}</CodeBlock>
+      <p style={{ marginTop: 'var(--spacing-md)' }}>
+        Under varje sensorkort visas trendbeskrivning med riktning och procentuell
+        förändring, t.ex. "Uppgående (måttlig, +8.3%)".
+      </p>
+    </SubSection>
+
+    <SubSection title="Ljudvarning">
+      <p style={{ marginBottom: 'var(--spacing-md)' }}>
+        Om ljudnivå (audsensor/sum) är vald analyseras trenden automatiskt. Vid
+        successivt ökande ljudnivå visas en varningsruta:
+      </p>
+      <ul style={{ paddingLeft: 'var(--spacing-lg)' }}>
+        <li><strong>Kritisk:</strong> Ljudnivå över 65 dB med tydlig ökning</li>
+        <li><strong>Varning:</strong> Ökning med mer än 10 dB under perioden</li>
+        <li><strong>Observation:</strong> Mindre ökning men över 50 dB genomsnitt</li>
+      </ul>
+      <p style={{ marginTop: 'var(--spacing-md)' }}>
+        Detta hjälper dig att upptäcka om det blivit högre ljudnivå i lokalen över tid,
+        vilket kan indikera förändrade aktivitetsmönster eller problem.
+      </p>
+    </SubSection>
+
+    <SubSection title="Tröskel-händelser">
+      <p style={{ marginBottom: 'var(--spacing-md)' }}>
+        Aktivera "Visa tröskel-händelser" för att se en tidslinje med överskridanden.
+        Varje gång ett sensorvärde passerar ett gränsvärde loggas det:
+      </p>
+      <CodeBlock>{`Gränsvärden per sensor:
+────────────────────────────────────────
+Ljudnivå:      Varning 55 dB, Kritisk 70 dB
+CO2:           Varning 800 ppm, Kritisk 1200 ppm
+TVOC:          Varning 500 ppb, Kritisk 1000 ppb
+Temperatur:    Varning 26°C, Kritisk 30°C
+Luftfuktighet: Varning 70%, Kritisk 80%
+PM2.5:         Varning 25 µg/m³, Kritisk 50 µg/m³
+PM10:          Varning 50 µg/m³, Kritisk 100 µg/m³
+CO:            Varning 9 ppm, Kritisk 35 ppm`}</CodeBlock>
+      <p style={{ marginTop: 'var(--spacing-md)' }}>
+        Tidslinjen visar:
+      </p>
+      <ul style={{ paddingLeft: 'var(--spacing-lg)' }}>
+        <li><strong>VARNING (gul):</strong> Värdet passerade varningströskeln</li>
+        <li><strong>KRITISK (röd):</strong> Värdet passerade kritisk tröskel</li>
+        <li><strong>OK (grön):</strong> Värdet återgick till normalt</li>
       </ul>
     </SubSection>
   </>
@@ -365,21 +453,44 @@ const AlertsSection: React.FC = () => (
       </ul>
     </SubSection>
 
-    <SubSection title="Trendvarningar (Trend Alerts)">
+    <SubSection title="Sensorvarningar">
       <p style={{ marginBottom: 'var(--spacing-md)' }}>
-        Observationer visas när sensorvärden avviker från normalintervallet:
+        Sensorvärden övervakas mot definierade tröskelvärden. När ett värde överskrider
+        dessa gränser genereras automatiskt en varning:
       </p>
       <ul style={{ paddingLeft: 'var(--spacing-lg)' }}>
-        <li>Värden över normalmax markeras med ↑</li>
-        <li>Värden under normalmin markeras med ↓</li>
-        <li>Snabba förändringar indikeras med trendpilar</li>
+        <li><strong>Ljudnivå:</strong> Varnar vid 55+ dB, kritisk vid 70+ dB</li>
+        <li><strong>CO2:</strong> Varnar vid 800+ ppm, kritisk vid 1200+ ppm</li>
+        <li><strong>Temperatur:</strong> Varnar vid 26+ °C, kritisk vid 30+ °C</li>
+        <li><strong>PM2.5:</strong> Varnar vid 25+ µg/m³, kritisk vid 50+ µg/m³</li>
       </ul>
+      <p style={{ marginTop: 'var(--spacing-md)' }}>
+        Se "Grafer & Analys" för fullständig lista över tröskelvärden.
+      </p>
+    </SubSection>
+
+    <SubSection title="Trendvarningar">
+      <p style={{ marginBottom: 'var(--spacing-md)' }}>
+        Systemet analyserar trender och varnar om sensorvärden förändras markant:
+      </p>
+      <ul style={{ paddingLeft: 'var(--spacing-lg)' }}>
+        <li><strong>Stark uppåt:</strong> Mer än 15% ökning (rött)</li>
+        <li><strong>Måttlig uppåt:</strong> 5-15% ökning (orange)</li>
+        <li><strong>Stabil:</strong> Mindre än 2% förändring (grått)</li>
+        <li><strong>Måttlig nedåt:</strong> 5-15% minskning (blått)</li>
+        <li><strong>Stark nedåt:</strong> Mer än 15% minskning (grönt)</li>
+      </ul>
+      <p style={{ marginTop: 'var(--spacing-md)' }}>
+        Särskilt fokus läggs på ljudnivå - om den successivt ökat under en period
+        visas en dedikerad ljudvarning på Grafer-sidan.
+      </p>
     </SubSection>
 
     <SubSection title="BLE Panikknapp">
       <p>
         Systemet stödjer BLE-beacons med panikknappsfunktion. När en panikknapp
-        trycks skickas en kritisk notifikation till dashboarden.
+        trycks skickas en kritisk notifikation till dashboarden. Denna funktion
+        är för närvarande parkerad (se Backlog).
       </p>
     </SubSection>
   </>
