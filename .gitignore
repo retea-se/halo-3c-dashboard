@@ -1,4 +1,28 @@
+# ============================================
+# .gitignore - AQI Dashboard Project
+# ============================================
+
+# ===========================================
+# SECRETS & CREDENTIALS - CRITICAL!
+# ===========================================
+.env
+.env.*
+!.env.example
+*.env
+CREDENTIALS.md
+**/synology.txt
+**/serverconf*.json
+**/gstate_cache.json
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+
+# ===========================================
 # Python
+# ===========================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -7,54 +31,97 @@ __pycache__/
 env/
 venv/
 ENV/
-.venv
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Node
+# ===========================================
+# Node.js
+# ===========================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.npm/
+.yarn/
 
-# IDEs
+# ===========================================
+# Build artifacts & archives
+# ===========================================
+dist/
+build/
+*.egg-info/
+*.tar.gz
+*.zip
+*.rar
+
+# ===========================================
+# IDE & Editor
+# ===========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.sublime-*
 
-# Environment variables
-.env
-.env.local
-.env.token
-CREDENTIALS.md
-
-# Data & logs
-data/influxdb/
-data/logs/
-*.log
-
-# Build artifacts
-dist/
-build/
-*.egg-info/
-
-# OS
+# ===========================================
+# OS generated
+# ===========================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Docker
-.dockerignore
+# ===========================================
+# Logs
+# ===========================================
+*.log
+logs/
+data/logs/
 
-# Temporary files
-*.tmp
-*.bak
+# ===========================================
+# Data & Database
+# ===========================================
+data/influxdb/
+*.sql
+*.dump
+*.sqlite
+*.db
 
-# Test results
+# ===========================================
+# Test & Coverage
+# ===========================================
 test-results/
 playwright-report/
 playwright/.cache/
 .pytest_cache/
 .coverage
 htmlcov/
-*.pyc
-__pycache__/
+coverage/
+.nyc_output/
+
+# ===========================================
+# Temporary & Cache
+# ===========================================
+*.tmp
+*.bak
+*.cache
+.cache/
+tmp/
+temp/
+
+# ===========================================
+# Docker (optional files)
+# ===========================================
+.dockerignore
+
+# ===========================================
+# Background docs - private infrastructure info
+# ===========================================
+docs/background/
