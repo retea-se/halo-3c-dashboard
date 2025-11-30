@@ -125,3 +125,17 @@ temp/
 # Background docs - private infrastructure info
 # ===========================================
 docs/background/
+
+# ===========================================
+# Development tools & session files
+# ===========================================
+.claude/
+.cursorrules
+mcp.json
+SESSION_LOG.md
+*.session
+CLAUDE.md
+
+# Cursor/AI IDE settings
+.cursorignore
+.cursor/
