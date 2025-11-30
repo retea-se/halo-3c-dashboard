@@ -17,20 +17,12 @@ import {
   BarChart,
   Bar,
   Cell,
-  PieChart,
-  Pie,
 } from 'recharts';
 import { useTheme } from '../theme/ThemeProvider';
 
 interface HourlyStats {
   hour: number;
   occupiedMinutes: number;
-  percentage: number;
-}
-
-interface DailyStats {
-  date: string;
-  occupiedHours: number;
   percentage: number;
 }
 

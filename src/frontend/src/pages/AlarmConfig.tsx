@@ -473,7 +473,7 @@ export const AlarmConfig: React.FC = () => {
           }}
           onClick={() => setShowAddChannel(false)}
         >
-          <Card padding="lg" style={{ maxWidth: '500px', width: '100%' }} onClick={e => e.stopPropagation()}>
+          <Card padding="lg" style={{ maxWidth: '500px', width: '100%' }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <h2 style={{ margin: 0, marginBottom: 'var(--spacing-lg)' }}>Lägg till larmkanal</h2>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-lg)' }}>
               <em>Demo: Denna funktionalitet är inte implementerad i demo-läge.</em>
@@ -515,7 +515,7 @@ export const AlarmConfig: React.FC = () => {
           }}
           onClick={() => setShowAddRule(false)}
         >
-          <Card padding="lg" style={{ maxWidth: '500px', width: '100%' }} onClick={e => e.stopPropagation()}>
+          <Card padding="lg" style={{ maxWidth: '500px', width: '100%' }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <h2 style={{ margin: 0, marginBottom: 'var(--spacing-lg)' }}>Lägg till larmregel</h2>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-lg)' }}>
               <em>Demo: Denna funktionalitet är inte implementerad i demo-läge.</em>
