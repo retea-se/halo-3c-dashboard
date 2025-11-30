@@ -38,7 +38,8 @@ class InfluxDBService:
             self._client = InfluxDBClient(
                 url=self._url,
                 token=self._token,
-                org=self._org
+                org=self._org,
+                timeout=30000  # 30 sekunder timeout
             )
             self._write_api = self._client.write_api(write_options=SYNCHRONOUS)
             self._query_api = self._client.query_api()

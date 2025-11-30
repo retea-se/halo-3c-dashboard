@@ -72,13 +72,21 @@ class LogService:
             # Vi gör detta i två steg: först kolla om device_id finns, sedan filtrera
             query += f'|> filter(fn: (r) => not exists r["device_id"] or r["device_id"] == "{device_id}")'
 
-            # Pivot för att samla alla fields till en rad per datapunkt
+            # Sortera och begränsa INNAN pivot för prestanda
+            # Pivot är en tung operation, så vi minimerar data först
             query += '''
-              |> pivot(rowKey: ["_time", "_measurement"], columnKey: ["_field"], valueColumn: "_value")
               |> sort(columns: ["_time"], desc: true)
             '''
 
-            # Limit
+            # Limit innan pivot (begränsa antal rader tidigt)
+            query += f'|> limit(n: {limit * 5})'
+
+            # Pivot för att samla alla fields till en rad per datapunkt
+            query += '''
+              |> pivot(rowKey: ["_time", "_measurement"], columnKey: ["_field"], valueColumn: "_value")
+            '''
+
+            # Final limit efter pivot
             query += f'|> limit(n: {limit})'
 
             # Kör query
