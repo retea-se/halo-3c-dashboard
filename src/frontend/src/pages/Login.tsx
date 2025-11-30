@@ -19,10 +19,10 @@ export const Login: React.FC = () => {
     try {
       const success = await login(username, password);
       if (!success) {
-        setError('Felaktigt anvandarnamn eller losenord');
+        setError('Felaktigt användarnamn eller lösenord');
       }
     } catch {
-      setError('Inloggningen misslyckades. Forsok igen.');
+      setError('Inloggningen misslyckades. Försök igen.');
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +75,7 @@ export const Login: React.FC = () => {
                 marginBottom: 'var(--spacing-xs)',
               }}
             >
-              Anvandarnamn
+              Användarnamn
             </label>
             <input
               id="username"
@@ -113,7 +113,7 @@ export const Login: React.FC = () => {
                 marginBottom: 'var(--spacing-xs)',
               }}
             >
-              Losenord
+              Lösenord
             </label>
             <input
               id="password"
@@ -193,7 +193,7 @@ export const Login: React.FC = () => {
             fontSize: 'var(--font-size-xs)',
             color: 'var(--color-text-tertiary)',
           }}>
-            Overvakning av obemannade tekniska utrymmen
+            Övervakning av obemannade tekniska utrymmen
           </p>
         </div>
       </div>

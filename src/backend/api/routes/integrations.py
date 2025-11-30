@@ -2,7 +2,7 @@
 Integrations routes - RTSP och BACnet konfiguration
 """
 from fastapi import APIRouter, HTTPException, Body
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict
 from datetime import datetime
 import logging
@@ -24,7 +24,8 @@ class RTSPConfigUpdate(BaseModel):
     img: Optional[str] = Field(None, description="Stream image path")
     scroll_time: Optional[int] = Field(None, ge=1, description="Scroll time i sekunder")
 
-    @validator('auth')
+    @field_validator('auth')
+    @classmethod
     def validate_auth(cls, v):
         if v is not None:
             valid_auths = ['basic', 'digest', 'both']
@@ -48,13 +49,15 @@ class BACnetConfigUpdate(BaseModel):
     foreignTTL: Optional[int] = Field(None, ge=0, description="Foreign TTL")
     covIncrement: Optional[int] = Field(None, ge=0, description="COV increment threshold")
 
-    @validator('deviceName', 'instanceNumber')
-    def validate_bacnet_required_fields(cls, v, values, field):
+    @field_validator('deviceName', 'instanceNumber')
+    @classmethod
+    def validate_bacnet_required_fields(cls, v, info):
         """Om on=True, måste deviceName och instanceNumber vara satta"""
-        if field.name == 'deviceName' and values.get('on') is True:
+        data = info.data
+        if info.field_name == 'deviceName' and data.get('on') is True:
             if not v or len(v.strip()) == 0:
                 raise ValueError("deviceName måste anges när BACnet är aktiverad")
-        if field.name == 'instanceNumber' and values.get('on') is True:
+        if info.field_name == 'instanceNumber' and data.get('on') is True:
             if v is None or v == 0:
                 raise ValueError("instanceNumber måste vara > 0 när BACnet är aktiverad")
         return v
