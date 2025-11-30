@@ -31,18 +31,32 @@ export const Navbar: React.FC = () => {
   const { colors } = useTheme();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // Initial check based on current window width (SSR-safe with fallback)
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
         setIsMobileMenuOpen(false);
       }
     };
+    // Check immediately on mount
     checkMobile();
+    // Add resize listener
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    // Also check on orientation change (important for mobile devices)
+    window.addEventListener('orientationchange', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
   }, []);
 
   // Close menu when navigating
@@ -72,33 +86,36 @@ export const Navbar: React.FC = () => {
         justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-          {/* Mobile menu button */}
-          {isMobile && (
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 'var(--spacing-xs)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--color-text-primary)',
-              }}
-              aria-label="Toggle menu"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                {isMobileMenuOpen ? (
-                  <path d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <>
-                    <path d="M3 12h18M3 6h18M3 18h18" />
-                  </>
-                )}
-              </svg>
-            </button>
-          )}
+          {/* Mobile menu button - always render but hide on desktop for proper touch support */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 'var(--spacing-sm)',
+              cursor: 'pointer',
+              display: isMobile ? 'flex' : 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-primary)',
+              minWidth: '44px', // Touch-friendly size (minimum 44x44)
+              minHeight: '44px',
+              marginLeft: '-8px', // Compensate for padding to align with edge
+              WebkitTapHighlightColor: 'transparent', // Remove iOS tap highlight
+            }}
+            aria-label="Toggle menu"
+            aria-expanded={isMobileMenuOpen}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {isMobileMenuOpen ? (
+                <path d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <>
+                  <path d="M3 12h18M3 6h18M3 18h18" />
+                </>
+              )}
+            </svg>
+          </button>
 
           {/* Logo/Brand */}
           <Link

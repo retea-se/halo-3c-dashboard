@@ -21,12 +21,13 @@ class OccupancyService:
     Service för att detektera rumsnärvaro baserat på sensordata.
 
     Använder en poängbaserad approach:
-    - CO2-nivå > 800 ppm: +3 poäng
+    - CO2-nivå > 800 ppm: +2 poäng (sänkt från +3 - CO2 ensam räcker inte för hög konfidens)
     - CO2-nivå > 600 ppm: +1 poäng
     - Ljudnivå > 55 dB: +2 poäng
     - Ljudnivå > 45 dB: +1 poäng
     - PIR-rörelse detekterad: +4 poäng (direkt rörelseindikation)
-    - BLE Beacon närvarande: +5 poäng (mest pålitlig)
+
+    OBS: BLE Beacon är borttaget ur denna lösning (se backlog för framtida implementation)
 
     Tröskel för "occupied": >= 3 poäng
     Tröskel för "vacant": <= 1 poäng
@@ -74,14 +75,12 @@ class OccupancyService:
         """
         try:
             from services.sensors import SensorService
-            from services.beacons import BeaconService
         except ImportError:
             # Fallback om services inte finns
             logger.warning("Could not import sensor services, returning uncertain state")
             return self._create_uncertain_response("Services not available")
 
         sensor_service = SensorService()
-        beacon_service = BeaconService()
 
         # Hämta senaste sensorvärden
         try:
@@ -95,24 +94,14 @@ class OccupancyService:
         audio_value = self._extract_sensor_value(latest_values, ["audsensor/sum"])
         pir_value = self._extract_sensor_value(latest_values, ["pirsensor/signal", "pirsensor/val"])
 
-        # Kolla BLE-beacons
-        try:
-            beacons = beacon_service.get_beacons()
-            beacon_present = any(
-                b.get("present", False) or b.get("rssi", -100) > -80
-                for b in beacons
-            )
-        except Exception as e:
-            logger.warning(f"Failed to get beacon data: {e}")
-            beacon_present = False
-            beacons = []
+        # BLE Beacons är borttaget ur denna lösning
+        # Se backlog för framtida implementation
 
         # Beräkna poäng
         score, score_breakdown = self._calculate_occupancy_score(
             co2_value=co2_value,
             audio_value=audio_value,
-            pir_value=pir_value,
-            beacon_present=beacon_present
+            pir_value=pir_value
         )
 
         # Bestäm status
@@ -129,7 +118,7 @@ class OccupancyService:
             "occupied": state == OccupancyState.OCCUPIED,
             "score": score,
             "threshold": self.OCCUPIED_THRESHOLD,
-            "confidence": self._calculate_confidence(score),
+            "confidence": self._calculate_confidence(score, score_breakdown),
             "timestamp": datetime.utcnow().isoformat(),
             "device_id": device_id,
         }
@@ -166,10 +155,11 @@ class OccupancyService:
                         "baseline": self.PIR_BASELINE,
                     }
                 },
+                # BLE Beacon borttaget - se backlog för framtida implementation
                 "beacon": {
-                    "present": beacon_present,
-                    "count": len([b for b in beacons if b.get("present", False)]),
-                    "contribution": score_breakdown.get("beacon", 0),
+                    "present": False,
+                    "count": 0,
+                    "contribution": 0,
                 }
             }
             response["score_breakdown"] = score_breakdown
@@ -215,8 +205,7 @@ class OccupancyService:
         self,
         co2_value: Optional[float],
         audio_value: Optional[float],
-        pir_value: Optional[float],
-        beacon_present: bool
+        pir_value: Optional[float]
     ) -> tuple[int, Dict[str, int]]:
         """
         Beräkna occupancy-poäng baserat på sensorvärden.
@@ -224,13 +213,13 @@ class OccupancyService:
         Returns:
             Tuple med (total_score, breakdown_dict)
         """
-        score = 0
         breakdown = {"co2": 0, "audio": 0, "pir": 0, "beacon": 0}
 
-        # CO2-poäng
+        # CO2-poäng (sänkt från 3 till 2 för hög nivå)
+        # CO2 ensam är inte tillräckligt pålitlig för hög konfidens
         if co2_value is not None:
             if co2_value >= self.CO2_HIGH_THRESHOLD:
-                breakdown["co2"] = 3
+                breakdown["co2"] = 2  # Tidigare 3
             elif co2_value >= self.CO2_MEDIUM_THRESHOLD:
                 breakdown["co2"] = 1
 
@@ -248,17 +237,27 @@ class OccupancyService:
             elif pir_value >= self.PIR_MEDIUM_THRESHOLD:
                 breakdown["pir"] = 2
 
-        # Beacon-poäng (högst prioritet)
-        if beacon_present:
-            breakdown["beacon"] = 5
+        # BLE Beacon borttaget - sätts alltid till 0
+        # Se backlog för framtida implementation
+        breakdown["beacon"] = 0
 
         score = sum(breakdown.values())
         return score, breakdown
 
-    def _calculate_confidence(self, score: int) -> str:
-        """Beräkna konfidens baserat på poäng."""
+    def _calculate_confidence(self, score: int, breakdown: Dict[str, int] = None) -> str:
+        """
+        Beräkna konfidens baserat på poäng och vilka sensorer som bidrar.
+
+        Hög konfidens kräver flera oberoende sensorer eller PIR-detektion.
+        CO2 ensam ger aldrig hög konfidens.
+        """
         if score >= 5:
             return "high"
+        elif score >= 4:
+            # Score 4 kan vara high om PIR bidrar (direkt rörelseindikation)
+            if breakdown and breakdown.get("pir", 0) >= 2:
+                return "high"
+            return "medium"
         elif score >= 3:
             return "medium"
         else:

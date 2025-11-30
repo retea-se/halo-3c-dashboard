@@ -13,12 +13,18 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from '../components/ui/Toast';
 
+interface SparklineDataPoint {
+  timestamp: number;
+  value: number;
+}
+
 interface SensorData {
   sensor_id: string;
   timestamp: string;
   values: Record<string, number>;
   previousValue?: number;
   trend?: 'up' | 'down' | 'stable';
+  sparklineData?: SparklineDataPoint[];
 }
 
 interface LatestSensorsResponse {
@@ -93,7 +99,10 @@ export const Dashboard: React.FC = () => {
   const [sensors, setSensors] = useState<SensorData[]>([]);
   const [previousSensors, setPreviousSensors] = useState<SensorData[]>([]);
   const [sensorMetadata, setSensorMetadata] = useState<any[]>([]);
+  const [sparklineHistory, setSparklineHistory] = useState<Record<string, SparklineDataPoint[]>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const { toasts, showToast, removeToast } = useToast();
 
   // WebSocket connection för real-time events
@@ -130,6 +139,86 @@ export const Dashboard: React.FC = () => {
     };
     loadMetadata();
   }, []);
+
+  // Ladda sparkline-historik för alla sensorer
+  useEffect(() => {
+    const loadSparklineHistory = async () => {
+      if (sensors.length === 0) return;
+
+      const history: Record<string, SparklineDataPoint[]> = {};
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+      // Hämta historik för varje sensor
+      await Promise.all(
+        sensors.map(async (sensor) => {
+          try {
+            const sensorHistory = await apiService.getSensorHistory(
+              sensor.sensor_id,
+              oneHourAgo.toISOString(),
+              now.toISOString(),
+              50 // Max 50 datapunkter för sparkline
+            );
+
+            if (sensorHistory && sensorHistory.length > 0) {
+              history[sensor.sensor_id] = sensorHistory.map((item: any) => ({
+                timestamp: new Date(item.timestamp || item._time).getTime(),
+                value: Number(item.value ?? item._value ?? Object.values(item.values || {})[0] ?? 0),
+              })).filter((p: SparklineDataPoint) => !isNaN(p.value));
+            }
+          } catch (error) {
+            // Ignorera fel för enskilda sensorer
+            console.debug(`Failed to load history for ${sensor.sensor_id}`);
+          }
+        })
+      );
+
+      setSparklineHistory(history);
+    };
+
+    // Ladda sparklines när sensorer laddats och sedan varje minut
+    if (sensors.length > 0) {
+      loadSparklineHistory();
+      const interval = setInterval(loadSparklineHistory, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [sensors.length > 0 ? sensors.map(s => s.sensor_id).join(',') : '']);
+
+  // Manuell refresh-funktion
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const response: LatestSensorsResponse = await apiService.getLatestSensors();
+      const rawSensors = response.sensors || [];
+      const filteredSensors = filterDashboardSensors(rawSensors);
+
+      const sensorsWithTrends = filteredSensors.map(sensor => {
+        const currentValue = Object.values(sensor.values)[0];
+        const prevSensor = previousSensors.find(p => p.sensor_id === sensor.sensor_id);
+        const prevValue = prevSensor ? Object.values(prevSensor.values)[0] : undefined;
+
+        let trend: 'up' | 'down' | 'stable' = 'stable';
+        if (prevValue !== undefined && currentValue !== undefined) {
+          const diff = currentValue - prevValue;
+          const threshold = Math.abs(prevValue) * 0.02;
+          if (diff > threshold) trend = 'up';
+          else if (diff < -threshold) trend = 'down';
+        }
+
+        return { ...sensor, previousValue: prevValue, trend };
+      });
+
+      setPreviousSensors(filteredSensors);
+      setSensors(sensorsWithTrends);
+      setLastRefresh(new Date());
+      showToast('Data uppdaterad', 'success', 2000);
+    } catch (error) {
+      console.error('Failed to refresh sensors:', error);
+      showToast('Kunde inte uppdatera data', 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Ladda senaste sensorvärden
   useEffect(() => {
@@ -206,22 +295,27 @@ export const Dashboard: React.FC = () => {
   // Kombinera sensor data med inbyggd konfiguration (prioriteras) eller extern metadata
   const sensorsWithMetadata = sensors.map((sensor) => {
     // Specialhantering för accelerometer - visa 0 om move == 0
+    let modifiedSensor = sensor;
     if (sensor.sensor_id === 'accsensor/move') {
       const moveValue = Object.values(sensor.values)[0];
       if (moveValue === 0 || moveValue === null || moveValue === undefined) {
         // Sätt värde till 0 om ingen rörelse
-        sensor = {
+        modifiedSensor = {
           ...sensor,
           values: { move: 0 },
         };
       }
     }
 
+    // Hämta sparkline-data för denna sensor
+    const sparklineData = sparklineHistory[sensor.sensor_id];
+
     // Använd inbyggd konfiguration om den finns
     const config = SENSOR_PRIORITY_CONFIG[sensor.sensor_id];
     if (config) {
       return {
-        ...sensor,
+        ...modifiedSensor,
+        sparklineData,
         metadata: {
           display_name: config.displayName,
           unit: config.unit,
@@ -237,7 +331,8 @@ export const Dashboard: React.FC = () => {
       return (m.id && m.id.includes(sensorKey)) || (m.technical_name && m.technical_name.includes(sensorKey));
     });
     return {
-      ...sensor,
+      ...modifiedSensor,
+      sparklineData,
       metadata,
     };
   });
@@ -266,7 +361,59 @@ export const Dashboard: React.FC = () => {
   return (
     <div style={{ padding: 'var(--spacing-lg)', maxWidth: '1400px', margin: '0 auto' }}>
       <ToastContainer toasts={toasts} onClose={removeToast} />
-      <h1 style={{ marginBottom: 'var(--spacing-xl)' }}>Dashboard</h1>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 'var(--spacing-xl)',
+        flexWrap: 'wrap',
+        gap: 'var(--spacing-md)',
+      }}>
+        <h1 style={{ margin: 0 }}>Dashboard</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+          {lastRefresh && (
+            <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-tertiary)' }}>
+              Uppdaterad: {lastRefresh.toLocaleTimeString('sv-SE')}
+            </span>
+          )}
+          <button
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-xs)',
+              padding: 'var(--spacing-sm) var(--spacing-md)',
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              fontSize: 'var(--font-size-sm)',
+              fontWeight: 500,
+              cursor: refreshing ? 'not-allowed' : 'pointer',
+              opacity: refreshing ? 0.7 : 1,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                animation: refreshing ? 'spin 1s linear infinite' : 'none',
+              }}
+            >
+              <path d="M21 12a9 9 0 11-6.219-8.56" />
+            </svg>
+            {refreshing ? 'Uppdaterar...' : 'Uppdatera'}
+          </button>
+        </div>
+      </div>
 
       {/* Systemdegraderings-varningar */}
       <DegradationAlerts refreshInterval={60000} lastDataTimestamp={latestTimestamp} />

@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { SensorInfoPopover } from './SensorInfoPopover';
+import { Sparkline, SparklineDataPoint } from './Sparkline';
 import { useTheme } from '../../theme/ThemeProvider';
 
 interface SensorCardProps {
@@ -15,6 +16,7 @@ interface SensorCardProps {
     metadata?: any;
     trend?: 'up' | 'down' | 'stable';
     previousValue?: number;
+    sparklineData?: SparklineDataPoint[];
   };
   metadata?: any;
 }
@@ -147,14 +149,25 @@ export const SensorCard: React.FC<SensorCardProps> = ({ sensorData, metadata }) 
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                gap: 'var(--spacing-sm)',
                 fontSize: 'var(--font-size-2xl)',
                 fontWeight: 700,
                 color: statusColor,
                 marginBottom: 'var(--spacing-xs)',
               }}
             >
-              {value.toFixed(1)} {unit}
-              {sensorData.trend && <TrendIndicator trend={sensorData.trend} size={20} />}
+              <span>
+                {value.toFixed(1)} {unit}
+                {sensorData.trend && <TrendIndicator trend={sensorData.trend} size={20} />}
+              </span>
+              {sensorData.sparklineData && sensorData.sparklineData.length > 1 && (
+                <Sparkline
+                  data={sensorData.sparklineData}
+                  trend={sensorData.trend}
+                  width={70}
+                  height={24}
+                />
+              )}
             </div>
           ) : (
             <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
