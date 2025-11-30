@@ -110,6 +110,9 @@ export const Dashboard: React.FC = () => {
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsHost = window.location.hostname;
 
+  // Hämta JWT-token från sessionStorage för WebSocket-autentisering
+  const wsToken = sessionStorage.getItem('tekniklokaler_auth_token');
+
   // Om vi är i produktion (inte localhost), använd relativa URL
   // så att nginx kan proxya WebSocket till backend
   // Annars använd samma port som frontend (för utveckling)
@@ -125,7 +128,9 @@ export const Dashboard: React.FC = () => {
     const portSuffix = wsPort && wsPort !== '80' && wsPort !== '443' ? `:${wsPort}` : '';
     wsUrl = `${wsProtocol}//${wsHost}${portSuffix}/api/events/stream`;
   }
-  const { lastMessage } = useWebSocket(wsUrl);
+  // Lägg till token som query parameter för autentisering
+  const wsUrlWithAuth = wsToken ? `${wsUrl}?token=${wsToken}` : wsUrl;
+  const { lastMessage } = useWebSocket(wsUrlWithAuth);
 
   // Ladda sensor metadata
   useEffect(() => {

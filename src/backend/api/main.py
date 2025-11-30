@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from .routes import sensors, events, auth, system, beacons, occupancy, log, integrations
+from .routes import sensors, events, auth, system, beacons, occupancy, log, integrations, predictive
 from .websocket import router as websocket_router
 
 # Skapa rate limiter
@@ -48,6 +48,7 @@ app.include_router(beacons.router, prefix="/api/beacons", tags=["beacons"])
 app.include_router(occupancy.router, prefix="/api/occupancy", tags=["occupancy"])
 app.include_router(log.router, prefix="/api/log", tags=["log"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
+app.include_router(predictive.router, prefix="/api/predictive", tags=["predictive"])
 app.include_router(websocket_router, tags=["websocket"])
 
 

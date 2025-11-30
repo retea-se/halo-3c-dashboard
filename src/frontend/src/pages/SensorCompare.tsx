@@ -762,7 +762,14 @@ export const SensorCompare: React.FC = () => {
                   label={
                     normalizeData
                       ? { value: '%', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }
-                      : undefined
+                      : selectedSensors.length === 1
+                        ? {
+                            value: availableSensors.find(s => s.id === selectedSensors[0])?.unit || '',
+                            angle: -90,
+                            position: 'insideLeft',
+                            style: { fontSize: '12px' }
+                          }
+                        : undefined
                   }
                 />
                 <Tooltip

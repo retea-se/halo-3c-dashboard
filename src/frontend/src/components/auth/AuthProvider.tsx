@@ -32,9 +32,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Load stored auth on mount
+  // Using sessionStorage instead of localStorage for security:
+  // - Tokens are cleared when browser/tab is closed
+  // - Not accessible to other tabs (XSS isolation)
   useEffect(() => {
-    const storedToken = localStorage.getItem(TOKEN_KEY);
-    const storedUser = localStorage.getItem(USER_KEY);
+    const storedToken = sessionStorage.getItem(TOKEN_KEY);
+    const storedUser = sessionStorage.getItem(USER_KEY);
 
     if (storedToken && storedUser) {
       try {
@@ -89,11 +92,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         authenticated: true,
       };
 
-      // Store in state and localStorage
+      // Store in state and sessionStorage (more secure than localStorage)
       setToken(newToken);
       setUser(newUser);
-      localStorage.setItem(TOKEN_KEY, newToken);
-      localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+      sessionStorage.setItem(TOKEN_KEY, newToken);
+      sessionStorage.setItem(USER_KEY, JSON.stringify(newUser));
 
       return true;
     } catch (error) {
@@ -105,8 +108,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
   };
 
   const value: AuthContextType = {

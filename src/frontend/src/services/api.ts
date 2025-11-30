@@ -22,7 +22,8 @@ class ApiService {
   }
 
   private getAuthHeader(): Record<string, string> {
-    const token = localStorage.getItem(TOKEN_KEY);
+    // Use sessionStorage for better security (tokens cleared on browser close)
+    const token = sessionStorage.getItem(TOKEN_KEY);
     if (token) {
       return { 'Authorization': `Bearer ${token}` };
     }
@@ -41,8 +42,8 @@ class ApiService {
 
     // Hantera 401 Unauthorized - logga ut anvandaren
     if (response.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem('tekniklokaler_auth_user');
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem('tekniklokaler_auth_user');
       window.location.reload();
       throw new Error('Session expired');
     }

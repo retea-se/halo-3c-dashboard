@@ -15,6 +15,10 @@ class EventType(str, Enum):
     SENSOR_THRESHOLD = "SENSOR_THRESHOLD"
     SYSTEM = "SYSTEM"
 
+    # Sound spike detection (24/7)
+    SOUND_SPIKE = "SOUND_SPIKE"
+    SOUND_SUSTAINED = "SOUND_SUSTAINED"
+
     # Beacon events
     BEACON_PANIC_BUTTON = "BEACON_PANIC_BUTTON"
     BEACON_ARRIVED = "BEACON_ARRIVED"

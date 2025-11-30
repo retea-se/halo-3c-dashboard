@@ -5,6 +5,7 @@ from typing import List, Dict, Optional
 import logging
 import math
 from .beacon_handler import BeaconHandler
+from services.sound_spike import analyze_sound_from_sensor_data
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,15 @@ class EventGenerator:
             events.extend(vibration_events)
         except Exception as e:
             logger.error(f"Error processing accelerometer: {e}", exc_info=True)
+
+        # Processa ljud för ljudspik-detektion (24/7)
+        try:
+            _, sound_events = analyze_sound_from_sensor_data(sensor_data)
+            for event in sound_events:
+                event['device_id'] = device_id
+            events.extend(sound_events)
+        except Exception as e:
+            logger.error(f"Error processing sound spike detection: {e}", exc_info=True)
 
         return events
 

@@ -19,6 +19,9 @@ import { Documentation } from './pages/Documentation';
 import { Log } from './pages/Log';
 import { Login } from './pages/Login';
 import { Integrations } from './pages/Integrations';
+import { AlarmConfig } from './pages/AlarmConfig';
+import { Certification } from './pages/Certification';
+import { Utilization } from './pages/Utilization';
 
 /**
  * AppContent - Innehall som kraver auth context
@@ -105,6 +108,21 @@ const AppContent: React.FC = () => {
           <Route path="/integrations" element={
             <ProtectedRoute>
               <Integrations />
+            </ProtectedRoute>
+          } />
+          <Route path="/alarms" element={
+            <ProtectedRoute>
+              <AlarmConfig />
+            </ProtectedRoute>
+          } />
+          <Route path="/certification" element={
+            <ProtectedRoute>
+              <Certification />
+            </ProtectedRoute>
+          } />
+          <Route path="/utilization" element={
+            <ProtectedRoute>
+              <Utilization />
             </ProtectedRoute>
           } />
         </Routes>
